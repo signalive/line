@@ -1,0 +1,32 @@
+{
+  "name": "line",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/signalive/line.git"
+  },
+  "bugs": {
+    "url": "https://github.com/signalive/line/issues"
+  },
+  "homepage": "https://github.com/signalive/line#readme",
+  "description": "",
+  "dependencies": {
+    "lodash": "4.16.6",
+    "node-uuid": "1.4.7",
+    "uws": "0.11.0"
+  },
+  "devDependencies": {
+    "babel-core": "^6.18.2",
+    "babel-loader": "^6.2.7",
+    "babel-preset-es2015": "^6.18.0",
+    "webpack": "1.13.3",
+    "webpack-node-externals": "1.5.4"
+  }
+}
