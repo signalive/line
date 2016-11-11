@@ -25,5 +25,26 @@ module.exports = [
 			]
 		},
 		devtool: 'source-map'
+	},
+	{
+		name: 'node:client',
+		entry: './src/client/client.js',
+		output: {
+			filename: 'client.js',
+			path: __dirname + '/dist',
+			libraryTarget: 'commonjs2'
+		},
+		target: 'node',
+		externals: [nodeExternal],
+		module: {
+			loaders: [
+				{
+					test: /\.js$/,
+					exclude: /(node_modules)/,
+					loaders: ['babel']
+				}
+			]
+		},
+		devtool: 'source-map'
 	}
 ]
