@@ -120,6 +120,22 @@ class Connection extends EventEmitter {
 			});
 		});
 	}
+
+	onp(eventName, callback) {
+		this.on(eventName, (payload, done) => {
+			try {
+				const response = callback(payload);
+				if (response instanceof Promise)
+					return response
+						.then(payload => done(null, payload))
+						.catch(err => done(err));
+
+				done(null, response);
+			} catch (err) {
+				done(err);
+			}
+		});
+	}
 }
 
 module.exports = Connection;
