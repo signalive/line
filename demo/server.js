@@ -16,14 +16,15 @@ server
 
 server.on('connection', function(connection) {
 	console.log('A client connected');
-	connection.on('asd', (payload, done) => {
-		console.log('received', payload);
+
+	connection.on('asd', (payload, done, message) => {
+		console.log('received', payload, message);
 
 		setTimeout(function() {
 			console.log('responding...');
 			done && done(null, {domates: 'patates'});
 		}, 2000)
-	})
+	});
 
 	connection.on('close', code => {
 		console.log(` ${code} closed`);

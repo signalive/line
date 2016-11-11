@@ -1,21 +1,24 @@
-const WebSocket = require('uws');
-const ws = new WebSocket('ws://localhost:3000');
+const Client = require('../dist/client');
 
-ws.on('open', function open() {
-    console.log('Connected!');
-    ws.send(JSON.stringify({event: 'asd', payload: {foo: 'bar'}, options: {id: 'ididid'}}));
+const client = new Client();
+
+client.connect('ws://localhost:3000');
+
+client.on('open', function() {
+	console.log(`Client connected. readyState=${client.readyState}`);
+	console.log('Sending message to server');
+	client
+		.send('asd', {foo: 'bar'})
+		.then(response => {
+			console.log('response recieved.', response);
+		})
 });
 
-ws.on('error', function error(err) {
-    console.log('Error connecting!', err);
+client.on('close', function(code, message) {
+	console.log(`Connection closed. readyState=${client.readyState}`, code, message);
 });
 
-ws.on('message', function(data, flags) {
-	// const d = JSON.parse(data);
-    console.log('Message: ', data);
-
+client.on('error', function(err) {
+	console.log(`Connection error occured. readyState=${client.readyState}`, err);
 });
 
-ws.on('close', function(code, message) {
-    console.log('Disconnection: ' + code + ', ' + message);
-});

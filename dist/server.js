@@ -194,7 +194,7 @@ module.exports =
 				if (!message.options.id) return this.emit(message.event, message.payload, message);
 	
 				if (message.event == '_ack') {
-					var _promiseCallbacks$mes = this.promiseCallbacks[message.id],
+					var _promiseCallbacks$mes = this.promiseCallbacks[message.options.id],
 					    resolve = _promiseCallbacks$mes.resolve,
 					    reject = _promiseCallbacks$mes.reject;
 	
@@ -206,14 +206,14 @@ module.exports =
 						resolve(message.payload);
 					}
 	
-					delete this.promiseCallbacks[message.id];
+					delete this.promiseCallbacks[message.options.id];
 					return;
 				}
 	
 				var done = function done(err, payload) {
 					if (_.isObject(err) && err instanceof Error && err.name == 'Error') err = { message: err.message, name: 'Error' };
 	
-					var response = err ? new _message2.default('_ack', err, { failed: true }) : new _message2.default('_ack', payload);
+					var response = err ? new _message2.default('_ack', err, { failed: true, id: message.options.id }) : new _message2.default('_ack', payload, { id: message.options.id });
 					_this2.send_(response);
 				};
 	
@@ -290,6 +290,24 @@ module.exports =
 						if (err) return reject(err);
 						resolve();
 					});
+				});
+			}
+		}, {
+			key: 'onp',
+			value: function onp(eventName, callback) {
+				this.on(eventName, function (payload, done) {
+					try {
+						var response = callback(payload);
+						if (response instanceof Promise) return response.then(function (payload) {
+							return done(null, payload);
+						}).catch(function (err) {
+							return done(err);
+						});
+	
+						done(null, response);
+					} catch (err) {
+						done(err);
+					}
 				});
 			}
 		}]);
