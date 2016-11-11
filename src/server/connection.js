@@ -34,7 +34,7 @@ class Connection extends EventEmitter {
 			return this.emit(message.event, message.payload, message);
 
 		if (message.event == '_ack') {
-			const {resolve, reject} = this.promiseCallbacks[message.id];
+			const {resolve, reject} = this.promiseCallbacks[message.options.id];
 
 			if (message.options.failed) {
 				const err = _.assign(new Error(), err);
@@ -43,7 +43,7 @@ class Connection extends EventEmitter {
 				resolve(message.payload);
 			}
 
-			delete this.promiseCallbacks[message.id];
+			delete this.promiseCallbacks[message.options.id];
 			return;
 		}
 
@@ -51,7 +51,7 @@ class Connection extends EventEmitter {
 	        if (_.isObject(err) && err instanceof Error && err.name == 'Error')
 	            err = {message: err.message, name: 'Error'};
 
-			const response = err ? new Message('_ack', err, {failed: true}) : new Message('_ack', payload);
+			const response = err ? new Message('_ack', err, {failed: true, id: message.options.id}) : new Message('_ack', payload, {id: message.options.id});
 			this.send_(response);
 		};
 
