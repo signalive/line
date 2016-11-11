@@ -52,7 +52,7 @@ class Connection extends EventEmitter {
 	            err = {message: err.message, name: 'Error'};
 
 			const response = err ? new Message('_ack', err, {failed: true}) : new Message('_ack', payload);
-			this.send_(payload);
+			this.send_(response);
 		};
 
 		this.emit(message.event, message.payload, done, message);

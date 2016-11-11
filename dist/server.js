@@ -143,7 +143,7 @@ module.exports =
 	
 	var _ = _interopRequireWildcard(_lodash);
 	
-	var _nodeUuid = __webpack_require__(8);
+	var _nodeUuid = __webpack_require__(5);
 	
 	var uuid = _interopRequireWildcard(_nodeUuid);
 	
@@ -214,7 +214,7 @@ module.exports =
 					if (_.isObject(err) && err instanceof Error && err.name == 'Error') err = { message: err.message, name: 'Error' };
 	
 					var response = err ? new _message2.default('_ack', err, { failed: true }) : new _message2.default('_ack', payload);
-					_this2.send_(payload);
+					_this2.send_(response);
 				};
 	
 				this.emit(message.event, message.payload, done, message);
@@ -315,7 +315,7 @@ module.exports =
 	
 	var _ = _interopRequireWildcard(_lodash);
 	
-	var _nodeUuid = __webpack_require__(8);
+	var _nodeUuid = __webpack_require__(5);
 	
 	var uuid = _interopRequireWildcard(_nodeUuid);
 	
@@ -382,7 +382,12 @@ module.exports =
 	module.exports = require("lodash");
 
 /***/ },
-/* 5 */,
+/* 5 */
+/***/ function(module, exports) {
+
+	module.exports = require("node-uuid");
+
+/***/ },
 /* 6 */
 /***/ function(module, exports) {
 
@@ -454,12 +459,6 @@ module.exports =
 	}();
 	
 	exports.default = Rooms;
-
-/***/ },
-/* 8 */
-/***/ function(module, exports) {
-
-	module.exports = require("node-uuid");
 
 /***/ }
 /******/ ]);
