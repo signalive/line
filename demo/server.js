@@ -17,13 +17,24 @@ server
 server.on('connection', function(connection) {
 	console.log('A client connected');
 
-	connection.on('asd', (payload, done, message) => {
-		console.log('received', payload, message);
+	connection.on('asd', message => {
+		console.log('received', message.payload);
 
 		setTimeout(function() {
-			console.log('responding...');
-			done && done(null, {domates: 'patates'});
+			console.log('responding ...');
+			message.resolve({domates: 'patates'});
 		}, 2000)
+	});
+
+	connection.on('bsd', message => {
+		console.log('received 2', message.payload);
+
+		return new Promise((resolve, reject) => {
+			setTimeout(function() {
+				console.log('responding 2...');
+				message.resolve({domates: 'patates2'});
+			}, 2000)
+		});
 	});
 
 	connection.on('close', code => {

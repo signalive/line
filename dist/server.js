@@ -59,7 +59,9 @@ module.exports =
 	
 	var _rooms2 = _interopRequireDefault(_rooms);
 	
-	var _events = __webpack_require__(6);
+	var _eventEmitterExtra = __webpack_require__(8);
+	
+	var _eventEmitterExtra2 = _interopRequireDefault(_eventEmitterExtra);
 	
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 	
@@ -115,7 +117,7 @@ module.exports =
 		}]);
 	
 		return Server;
-	}(_events.EventEmitter);
+	}(_eventEmitterExtra2.default);
 	
 	module.exports = Server;
 
@@ -137,7 +139,9 @@ module.exports =
 	
 	var _message2 = _interopRequireDefault(_message);
 	
-	var _events = __webpack_require__(6);
+	var _eventEmitterExtra = __webpack_require__(8);
+	
+	var _eventEmitterExtra2 = _interopRequireDefault(_eventEmitterExtra);
 	
 	var _lodash = __webpack_require__(4);
 	
@@ -179,28 +183,26 @@ module.exports =
 			return _this;
 		}
 	
-		// line
-		// 	.send('asd', payload)
-		// 	.then(null => {
-		// 		// 123
-		// 	});
-	
 		_createClass(Connection, [{
 			key: 'onMessage',
 			value: function onMessage(data, flags) {
 				var _this2 = this;
 	
 				var message = _message2.default.parse(data);
-				if (!message.options.id) return this.emit(message.event, message.payload, message);
 	
-				if (message.event == '_ack') {
-					var _promiseCallbacks$mes = this.promiseCallbacks[message.options.id],
+				// Ciplak mesaj, publish
+				if (!message.id && _message2.default.reservedNames.indexOf(message.name) == -1) return this.emit(message.name, message);
+	
+				// Bize response geliyor
+	
+				if (message.name == '_r') {
+					var _promiseCallbacks$mes = this.promiseCallbacks[message.id],
 					    resolve = _promiseCallbacks$mes.resolve,
 					    reject = _promiseCallbacks$mes.reject;
 	
 	
-					if (message.options.failed) {
-						var err = _.assign(new Error(), err);
+					if (message.err) {
+						var err = _.assign(new Error(), message.err);
 						reject(err);
 					} else {
 						resolve(message.payload);
@@ -210,14 +212,18 @@ module.exports =
 					return;
 				}
 	
-				var done = function done(err, payload) {
+				// Bizden response bekleniyor
+	
+				message.once('resolved', function (payload) {
+					_this2.send_(message.createResponse(null, payload));
+				});
+	
+				message.once('rejected', function (err) {
 					if (_.isObject(err) && err instanceof Error && err.name == 'Error') err = { message: err.message, name: 'Error' };
+					_this2.send_(message.createResponse(err));
+				});
 	
-					var response = err ? new _message2.default('_ack', err, { failed: true, id: message.options.id }) : new _message2.default('_ack', payload, { id: message.options.id });
-					_this2.send_(response);
-				};
-	
-				this.emit(message.event, message.payload, done, message);
+				this.emit(message.name, message);
 			}
 		}, {
 			key: 'onError',
@@ -234,23 +240,23 @@ module.exports =
 				});
 				this.promiseCallbacks = {};
 	
-				this.emit('close', code, message);
+				this.emit('_close', code, message);
 			}
 		}, {
 			key: 'onPing',
 			value: function onPing(data, flags) {
-				this.emit('ping', data, flags);
+				this.emit('_ping', data, flags);
 			}
 		}, {
 			key: 'onPong',
 			value: function onPong(data, flags) {
-				this.emit('pong', data, flags);
+				this.emit('_pong', data, flags);
 			}
 		}, {
 			key: 'onOpen',
 			value: function onOpen() {
 				this.joinRoom('/');
-				this.emit('open');
+				this.emit('_open');
 			}
 		}, {
 			key: 'joinRoom',
@@ -272,7 +278,7 @@ module.exports =
 			value: function send(eventName, payload) {
 				var _this3 = this;
 	
-				var message = new _message2.default(eventName, payload);
+				var message = new _message2.default({ name: eventName, payload: payload });
 				var messageId = message.setId();
 				return this.send_(message).then(function (_) {
 					return new Promise(function (resolve, reject) {
@@ -292,28 +298,10 @@ module.exports =
 					});
 				});
 			}
-		}, {
-			key: 'onp',
-			value: function onp(eventName, callback) {
-				this.on(eventName, function (payload, done) {
-					try {
-						var response = callback(payload);
-						if (response instanceof Promise) return response.then(function (payload) {
-							return done(null, payload);
-						}).catch(function (err) {
-							return done(err);
-						});
-	
-						done(null, response);
-					} catch (err) {
-						done(err);
-					}
-				});
-			}
 		}]);
 	
 		return Connection;
-	}(_events.EventEmitter);
+	}(_eventEmitterExtra2.default);
 	
 	module.exports = Connection;
 
@@ -337,61 +325,118 @@ module.exports =
 	
 	var uuid = _interopRequireWildcard(_nodeUuid);
 	
+	var _eventEmitterExtra = __webpack_require__(8);
+	
+	var _eventEmitterExtra2 = _interopRequireDefault(_eventEmitterExtra);
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+	
 	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 	
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 	
-	var Message = function () {
+	function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+	
+	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+	
+	var Message = function (_EventEmitter) {
+		_inherits(Message, _EventEmitter);
+	
 		_createClass(Message, null, [{
 			key: 'parse',
 			value: function parse(raw) {
 				try {
 					var data = JSON.parse(raw);
-					return new Message(data.event, data.payload, data.options);
+					return new Message({
+						name: data.n,
+						payload: data.p,
+						err: data.e,
+						id: data.i
+					});
 				} catch (err) {
 					throw new Error('Could not parse message.');
 				}
 			}
 		}]);
 	
-		function Message(event, payload) {
-			var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+		function Message(_ref) {
+			var name = _ref.name,
+			    payload = _ref.payload,
+			    id = _ref.id,
+			    err = _ref.err;
 	
 			_classCallCheck(this, Message);
 	
-			this.event = event;
-			this.payload = payload;
-			this.options = options;
+			var _this = _possibleConstructorReturn(this, (Message.__proto__ || Object.getPrototypeOf(Message)).call(this));
+	
+			_this.name = name;
+			_this.payload = payload;
+			_this.id = id;
+			_this.err = err;
+	
+			_this.isResponded_ = false;
+			return _this;
 		}
 	
 		_createClass(Message, [{
 			key: 'setId',
-			value: function setId(id) {
-				if (!id) id = uuid.v4();
-				this.options.id = id;
+			value: function setId() {
+				var id = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : uuid.v4();
+	
+				this.id = id;
 				return id;
 			}
 		}, {
 			key: 'toString',
 			value: function toString() {
 				try {
-					var data = { event: this.event };
+					var data = { n: this.name };
 	
-					if (!_.isUndefined(this.payload)) data.payload = this.payload;
+					if (!_.isUndefined(this.payload)) data.p = this.payload;
 	
-					if (!_.isEmpty(this.options)) data.options = this.options;
+					if (!_.isUndefined(this.id)) data.i = this.id;
+	
+					if (!_.isUndefined(this.err)) data.e = this.err;
 	
 					return JSON.stringify(data);
 				} catch (err) {
 					throw new Error('Could not stringify message.');
 				}
 			}
+		}, {
+			key: 'createResponse',
+			value: function createResponse(err, payload) {
+				return new Message({ name: '_r', payload: payload, err: err, id: this.id });
+			}
+		}, {
+			key: 'resolve',
+			value: function resolve(payload) {
+				if (_.isUndefined(this.id)) return console.warn('[line] A message without an id cannot be resolved.');
+	
+				if (this.isResponded_) return console.warn('[line] This message has already been ended.');
+	
+				this.isResponded_ = true;
+				this.emit('resolved', payload);
+			}
+		}, {
+			key: 'reject',
+			value: function reject(err) {
+				if (_.isUndefined(this.id)) return console.warn('[line] A message without an id cannot be rejected.');
+	
+				if (this.isResponded_) return console.warn('[line] This message has already been ended.');
+	
+				this.isResponded_ = true;
+				this.emit('rejected', err);
+			}
 		}]);
 	
 		return Message;
-	}();
+	}(_eventEmitterExtra2.default);
 	
 	exports.default = Message;
+	
+	
+	Message.reservedNames = ['_r'];
 
 /***/ },
 /* 4 */
@@ -406,12 +451,7 @@ module.exports =
 	module.exports = require("node-uuid");
 
 /***/ },
-/* 6 */
-/***/ function(module, exports) {
-
-	module.exports = require("events");
-
-/***/ },
+/* 6 */,
 /* 7 */
 /***/ function(module, exports, __webpack_require__) {
 
@@ -477,6 +517,12 @@ module.exports =
 	}();
 	
 	exports.default = Rooms;
+
+/***/ },
+/* 8 */
+/***/ function(module, exports) {
+
+	module.exports = require("event-emitter-extra");
 
 /***/ }
 /******/ ]);

@@ -11,6 +11,12 @@ client.on('open', function() {
 		.send('asd', {foo: 'bar'})
 		.then(response => {
 			console.log('response recieved.', response);
+
+			client
+				.send('bsd', {foo: 'buzz'})
+				.then(response => {
+					console.log('response 2 recieved.', response);
+				});
 		})
 });
 
