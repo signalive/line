@@ -1,6 +1,6 @@
 import WebSocket from 'uws';
 import Message from '../lib/message';
-import {EventEmitter} from 'events';
+import EventEmitter from 'event-emitter-extra';
 
 
 class Client extends EventEmitter {
@@ -43,36 +43,43 @@ class Client extends EventEmitter {
 	onMessage(data, flags) {
 		const message = Message.parse(data);
 
-		if (!message.options.id)
-			return this.emit(message.event, message.payload, message);
+		// Ciplak mesaj, publish
+		if (!message.id && Message.reservedNames.indexOf(message.name) == -1)
+			return this.emit(message.name, message);
 
-		if (message.event == '_ack') {
-			const {resolve, reject} = this.promiseCallbacks[message.options.id];
+		// Bize response geliyor
 
-			if (message.options.failed) {
-				const err = _.assign(new Error(), err);
+		if (message.name == '_r') {
+			const {resolve, reject} = this.promiseCallbacks[message.id];
+
+			if (message.err) {
+				const err = _.assign(new Error(), message.err);
 				reject(err);
 			} else {
 				resolve(message.payload);
 			}
 
-			delete this.promiseCallbacks[message.options.id];
+			delete this.promiseCallbacks[message.id];
 			return;
 		}
 
-		const done = (err, payload) => {
+		// Bizden response bekleniyor
+
+		message.once('resolved', payload => {
+			this.send_(message.createResponse(null, payload));
+		});
+
+		message.once('rejected', err => {
 	        if (_.isObject(err) && err instanceof Error && err.name == 'Error')
-	            err = {message: err.message, name: 'Error'};
+	           err = {message: err.message, name: 'Error'};
+			this.send_(message.createResponse(err));
+		});
 
-			const response = err ? new Message('_ack', err, {failed: true, id: message.options.id}) : new Message('_ack', payload, {id: message.options.id});
-			this.send_(response);
-		};
-
-		this.emit(message.event, message.payload, done, message);
+		this.emit(message.name, message);
 	}
 
 	send(eventName, payload) {
-		const message = new Message(eventName, payload);
+		const message = new Message({name: eventName, payload});
 		const messageId = message.setId();
 		return this
 			.send_(message)

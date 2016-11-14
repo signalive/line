@@ -1,5 +1,5 @@
 import Message from '../lib/message';
-import {EventEmitter} from 'events';
+import EventEmitter from 'event-emitter-extra';
 import * as _ from 'lodash';
 import * as uuid from 'node-uuid';
 
@@ -22,22 +22,20 @@ class Connection extends EventEmitter {
 	}
 
 
-// line
-// 	.send('asd', payload)
-// 	.then(null => {
-// 		// 123
-// 	});
-
 	onMessage(data, flags) {
 		const message = Message.parse(data);
-		if (!message.options.id)
-			return this.emit(message.event, message.payload, message);
 
-		if (message.event == '_ack') {
-			const {resolve, reject} = this.promiseCallbacks[message.options.id];
+		// Ciplak mesaj, publish
+		if (!message.id && Message.reservedNames.indexOf(message.name) == -1)
+			return this.emit(message.name, message);
 
-			if (message.options.failed) {
-				const err = _.assign(new Error(), err);
+		// Bize response geliyor
+
+		if (message.name == '_r') {
+			const {resolve, reject} = this.promiseCallbacks[message.id];
+
+			if (message.err) {
+				const err = _.assign(new Error(), message.err);
 				reject(err);
 			} else {
 				resolve(message.payload);
@@ -47,15 +45,19 @@ class Connection extends EventEmitter {
 			return;
 		}
 
-		const done = (err, payload) => {
+		// Bizden response bekleniyor
+
+		message.once('resolved', payload => {
+			this.send_(message.createResponse(null, payload));
+		});
+
+		message.once('rejected', err => {
 	        if (_.isObject(err) && err instanceof Error && err.name == 'Error')
-	            err = {message: err.message, name: 'Error'};
+	           err = {message: err.message, name: 'Error'};
+			this.send_(message.createResponse(err));
+		});
 
-			const response = err ? new Message('_ack', err, {failed: true, id: message.options.id}) : new Message('_ack', payload, {id: message.options.id});
-			this.send_(response);
-		};
-
-		this.emit(message.event, message.payload, done, message);
+		this.emit(message.name, message);
 	}
 
 	onError(error) {
@@ -70,20 +72,20 @@ class Connection extends EventEmitter {
 		});
 		this.promiseCallbacks = {};
 
-		this.emit('close', code, message);
+		this.emit('_close', code, message);
 	}
 
 	onPing(data, flags) {
-		this.emit('ping', data, flags);
+		this.emit('_ping', data, flags);
 	}
 
 	onPong(data, flags) {
-		this.emit('pong', data, flags);
+		this.emit('_pong', data, flags);
 	}
 
 	onOpen() {
 		this.joinRoom('/');
-		this.emit('open');
+		this.emit('_open');
 	}
 
 
@@ -101,7 +103,7 @@ class Connection extends EventEmitter {
 	}
 
 	send(eventName, payload) {
-		const message = new Message(eventName, payload);
+		const message = new Message({name: eventName, payload});
 		const messageId = message.setId();
 		return this
 			.send_(message)
@@ -118,22 +120,6 @@ class Connection extends EventEmitter {
 				if (err) return reject(err);
 				resolve();
 			});
-		});
-	}
-
-	onp(eventName, callback) {
-		this.on(eventName, (payload, done) => {
-			try {
-				const response = callback(payload);
-				if (response instanceof Promise)
-					return response
-						.then(payload => done(null, payload))
-						.catch(err => done(err));
-
-				done(null, response);
-			} catch (err) {
-				done(err);
-			}
 		});
 	}
 }
