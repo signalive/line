@@ -12,25 +12,20 @@ class Connection extends EventEmitter {
 		this.server = server;
 
 		this.promiseCallbacks = {};
-		// this.id = uuid.v4();
 		this.socket.on('message', this.onMessage.bind(this));
 		this.socket.on('error', this.onError.bind(this));
 		this.socket.on('close', this.onClose.bind(this));
-		this.socket.on('ping', this.onPing.bind(this));
-		this.socket.on('pong', this.onPong.bind(this));
-		//this.socket.on('open', this.onOpen.bind(this));
 	}
 
 
 	onMessage(data, flags) {
 		const message = Message.parse(data);
 
-		// Ciplak mesaj, publish
+		// Message without response (no id fields)
 		if (!message.id && Message.reservedNames.indexOf(message.name) == -1)
 			return this.emit(message.name, message);
 
-		// Bize response geliyor
-
+		// Message response
 		if (message.name == '_r') {
 			const {resolve, reject} = this.promiseCallbacks[message.id];
 
@@ -45,8 +40,7 @@ class Connection extends EventEmitter {
 			return;
 		}
 
-		// Bizden response bekleniyor
-
+		// Message with response
 		message.once('resolved', payload => {
 			this.send_(message.createResponse(null, payload));
 		});
@@ -61,7 +55,7 @@ class Connection extends EventEmitter {
 	}
 
 	onError(error) {
-		this.emit('error', error);
+		this.emit('_error', error);
 	}
 
 	onClose(code, message) {
@@ -75,19 +69,10 @@ class Connection extends EventEmitter {
 		this.emit('_close', code, message);
 	}
 
-	onPing(data, flags) {
-		this.emit('_ping', data, flags);
-	}
-
-	onPong(data, flags) {
-		this.emit('_pong', data, flags);
-	}
-
 	onOpen() {
 		this.joinRoom('/');
 		this.emit('_open');
 	}
-
 
 	joinRoom(roomName) {
 		this.server.rooms.add(roomName, this);

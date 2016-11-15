@@ -26,29 +26,28 @@ class Client extends EventEmitter {
 
 	onOpen() {
 		this.readyState = this.ws.readyState;
-		this.emit('open');
+		this.emit('_open');
 	}
 
 
 	onClose(code, message) {
 		this.readyState = this.ws.readyState;
-		this.emit('close', code, message);
+		this.emit('_close', code, message);
 	}
 
 	onError(err) {
 		this.readyState = this.ws.readyState;
-		this.emit('error', err);
+		this.emit('_error', err);
 	}
 
 	onMessage(data, flags) {
 		const message = Message.parse(data);
 
-		// Ciplak mesaj, publish
+		// Message without response (no id fields)
 		if (!message.id && Message.reservedNames.indexOf(message.name) == -1)
 			return this.emit(message.name, message);
 
-		// Bize response geliyor
-
+		// Message response
 		if (message.name == '_r') {
 			const {resolve, reject} = this.promiseCallbacks[message.id];
 
@@ -63,8 +62,7 @@ class Client extends EventEmitter {
 			return;
 		}
 
-		// Bizden response bekleniyor
-
+		// Message with response
 		message.once('resolved', payload => {
 			this.send_(message.createResponse(null, payload));
 		});
