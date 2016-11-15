@@ -8,6 +8,8 @@ class Connection extends EventEmitter {
 	constructor(socket, server) {
 		super();
 
+		this.id = uuid.v4();
+
 		this.socket = socket;
 		this.server = server;
 
@@ -15,6 +17,8 @@ class Connection extends EventEmitter {
 		this.socket.on('message', this.onMessage.bind(this));
 		this.socket.on('error', this.onError.bind(this));
 		this.socket.on('close', this.onClose.bind(this));
+
+		this.joinRoom('/');
 	}
 
 
@@ -69,11 +73,6 @@ class Connection extends EventEmitter {
 		this.promiseCallbacks = {};
 
 		this.emit('_close', code, message);
-	}
-
-	onOpen() {
-		this.joinRoom('/');
-		this.emit('_open');
 	}
 
 	joinRoom(roomName) {

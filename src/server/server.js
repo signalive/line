@@ -35,8 +35,6 @@ class Server extends EventEmitter {
 		const connection = new Connection(socket, this);
 		this.emit('connection', connection);
 	}
-
-
 }
 
 module.exports = Server;
