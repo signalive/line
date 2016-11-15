@@ -6,6 +6,7 @@
     "build": "webpack -p",
     "build:dev": "webpack",
     "build:watch": "webpack -p -w",
+    "postinstall": "./scripts/symlink.sh",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
