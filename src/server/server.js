@@ -27,6 +27,19 @@ class Server extends EventEmitter {
 		})
 	}
 
+
+	stop() {
+		if (!this.server) {
+			const err = new Error('Could not stop server. Server is probably not started, or already stopped.');
+			return Promise.reject(err);
+		}
+
+		this.server.close();
+		this.server = null;
+		return Promise.resolve();
+	}
+
+
 	bindEvents() {
 		this.server.on('connection', this.onConnection.bind(this));
 	}
