@@ -28,14 +28,53 @@ module.exports = [
 	},
 	{
 		name: 'node:client',
-		entry: './src/client/client.js',
+		entry: './src/client/client-node.js',
 		output: {
-			filename: 'client.js',
+			filename: 'client-node.js',
 			path: __dirname + '/dist',
 			libraryTarget: 'commonjs2'
 		},
 		target: 'node',
 		externals: [nodeExternal],
+		module: {
+			loaders: [
+				{
+					test: /\.js$/,
+					exclude: /(node_modules)/,
+					loaders: ['babel']
+				}
+			]
+		},
+		devtool: 'source-map'
+	},
+	{
+		name: 'web:client',
+		entry: './src/client/client-web.js',
+		output: {
+			filename: 'client-web.js',
+			path: __dirname + '/dist',
+			libraryTarget: 'commonjs2'
+		},
+		module: {
+			loaders: [
+				{
+					test: /\.js$/,
+					exclude: /(node_modules)/,
+					loaders: ['babel']
+				}
+			]
+		},
+		devtool: 'source-map'
+	},
+	{
+		name: 'web:client:globals',
+		entry: './src/client/client-web.js',
+		output: {
+			filename: 'client-web-globals.js',
+			path: __dirname + '/dist',
+			library: 'LineClient',
+            libraryTarget: 'var'
+		},
 		module: {
 			loaders: [
 				{

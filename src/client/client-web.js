@@ -1,4 +1,3 @@
-import WebSocket from 'uws';
 import Message from '../lib/message';
 import EventEmitter from 'event-emitter-extra';
 
@@ -18,10 +17,10 @@ class Client extends EventEmitter {
 	}
 
 	bindEvents() {
-		this.ws.on('open', this.onOpen.bind(this));
-		this.ws.on('close', this.onClose.bind(this));
-		this.ws.on('error', this.onError.bind(this));
-		this.ws.on('message', this.onMessage.bind(this));
+		this.ws.onopen = this.onOpen.bind(this);
+		this.ws.onclose = this.onClose.bind(this);
+		this.ws.onerror = this.onError.bind(this);
+		this.ws.onmessage = this.onMessage.bind(this);
 	}
 
 	onOpen() {
@@ -30,9 +29,9 @@ class Client extends EventEmitter {
 	}
 
 
-	onClose(code, message) {
+	onClose(e) {
 		this.readyState = this.ws.readyState;
-		this.emit('_close', code, message);
+		this.emit('_close', e.code, e.reason);
 	}
 
 	onError(err) {
@@ -40,8 +39,8 @@ class Client extends EventEmitter {
 		this.emit('_error', err);
 	}
 
-	onMessage(data, flags) {
-		const message = Message.parse(data);
+	onMessage(e) {
+		const message = Message.parse(e.data);
 
 		// Message without response (no id fields)
 		if (!message.id && Message.reservedNames.indexOf(message.name) == -1)
@@ -91,12 +90,8 @@ class Client extends EventEmitter {
 	}
 
 	send_(message) {
-		return new Promise((resolve, reject) => {
-			this.ws.send(message.toString(), err => {
-				if (err) return reject(err);
-				resolve();
-			});
-		});
+		this.ws.send(message.toString());
+		return Promise.resolve();
 	}
 
 }
