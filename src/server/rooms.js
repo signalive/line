@@ -1,4 +1,6 @@
-import * as _ from 'lodash';
+import filter from 'lodash/filter';
+import forEach from 'lodash/forEach';
+import map from 'lodash/map';
 import Room from './room';
 
 
@@ -25,7 +27,7 @@ export default class Rooms {
 	}
 
 	getRoomsOf(connection) {
-		return _.map(_.filter(this.rooms, room => room.getConnectionById(connection.id)), 'name');
+		return map(filter(this.rooms, room => room.getConnectionById(connection.id)), 'name');
 	}
 
 	getRoom(room) {
@@ -34,6 +36,6 @@ export default class Rooms {
 
 	removeFromAll(connection) {
 		const rooms = this.getRoomsOf(connection);
-		_.forEach(rooms, roomName => this.rooms[roomName].remove(connection));
+		forEach(rooms, roomName => this.rooms[roomName].remove(connection));
 	}
 }

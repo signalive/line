@@ -1,6 +1,8 @@
 import Message from '../lib/message';
 import EventEmitter from 'event-emitter-extra';
-import * as _ from 'lodash';
+import assign from 'lodash/assign';
+import forEach from 'lodash/forEach';
+import isObject from 'lodash/isObject';
 import * as uuid from 'node-uuid';
 
 
@@ -34,7 +36,7 @@ class Connection extends EventEmitter {
 			const {resolve, reject} = this.promiseCallbacks[message.id];
 
 			if (message.err) {
-				const err = _.assign(new Error(), message.err);
+				const err = assign(new Error(), message.err);
 				reject(err);
 			} else {
 				resolve(message.payload);
@@ -51,7 +53,7 @@ class Connection extends EventEmitter {
 		});
 
 		message.once('rejected', err => {
-	        if (_.isObject(err) && err instanceof Error && err.name == 'Error')
+	        if (isObject(err) && err instanceof Error && err.name == 'Error')
 	           err = {message: err.message, name: 'Error'};
 			this.send_(message.createResponse(err));
 			message.dispose();
@@ -67,7 +69,7 @@ class Connection extends EventEmitter {
 	onClose(code, message) {
 		this.server.rooms.removeFromAll(this);
 
-		_.forEach(this.promiseCallbacks, (callbacks) => {
+		forEach(this.promiseCallbacks, (callbacks) => {
 			callbacks.reject(new Error('Socket connection closed!'));
 		});
 		this.promiseCallbacks = {};
