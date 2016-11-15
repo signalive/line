@@ -35,25 +35,6 @@ export default class Message extends EventEmitter {
 		return id;
 	}
 
-	toString() {
-		try {
-			const data = {n: this.name};
-
-			if (!_.isUndefined(this.payload))
-				data.p = this.payload;
-
-			if (!_.isUndefined(this.id))
-				data.i = this.id;
-
-			if (!_.isUndefined(this.err))
-				data.e = this.err;
-
-			return JSON.stringify(data);
-		} catch(err) {
-			throw new Error(`Could not stringify message.`);
-		}
-	}
-
 	createResponse(err, payload) {
 		return new Message({name: '_r', payload, err, id: this.id});
 	}
@@ -80,8 +61,28 @@ export default class Message extends EventEmitter {
 		this.emit('rejected', err);
 	}
 
+	toString() {
+		try {
+			const data = {n: this.name};
+
+			if (!_.isUndefined(this.payload))
+				data.p = this.payload;
+
+			if (!_.isUndefined(this.id))
+				data.i = this.id;
+
+			if (!_.isUndefined(this.err))
+				data.e = this.err;
+
+			return JSON.stringify(data);
+		} catch(err) {
+			throw new Error(`Could not stringify message.`);
+		}
+	}
+
 	dispose() {
-		events.forEach(this.eventNames() => this.removeAllListeners(event));
+		const events = this.eventNames();
+		events.forEach(event => this.removeAllListeners(event));
 	}
 }
 
