@@ -103,19 +103,19 @@ module.exports =
 			key: 'onOpen',
 			value: function onOpen() {
 				this.readyState = this.ws.readyState;
-				this.emit('open');
+				this.emit('_open');
 			}
 		}, {
 			key: 'onClose',
 			value: function onClose(code, message) {
 				this.readyState = this.ws.readyState;
-				this.emit('close', code, message);
+				this.emit('_close', code, message);
 			}
 		}, {
 			key: 'onError',
 			value: function onError(err) {
 				this.readyState = this.ws.readyState;
-				this.emit('error', err);
+				this.emit('_error', err);
 			}
 		}, {
 			key: 'onMessage',
@@ -124,11 +124,10 @@ module.exports =
 	
 				var message = _message2.default.parse(data);
 	
-				// Ciplak mesaj, publish
+				// Message without response (no id fields)
 				if (!message.id && _message2.default.reservedNames.indexOf(message.name) == -1) return this.emit(message.name, message);
 	
-				// Bize response geliyor
-	
+				// Message response
 				if (message.name == '_r') {
 					var _promiseCallbacks$mes = this.promiseCallbacks[message.id],
 					    resolve = _promiseCallbacks$mes.resolve,
@@ -146,15 +145,16 @@ module.exports =
 					return;
 				}
 	
-				// Bizden response bekleniyor
-	
+				// Message with response
 				message.once('resolved', function (payload) {
 					_this2.send_(message.createResponse(null, payload));
+					message.dispose();
 				});
 	
 				message.once('rejected', function (err) {
 					if (_.isObject(err) && err instanceof Error && err.name == 'Error') err = { message: err.message, name: 'Error' };
 					_this2.send_(message.createResponse(err));
+					message.dispose();
 				});
 	
 				this.emit(message.name, message);
@@ -279,23 +279,6 @@ module.exports =
 				return id;
 			}
 		}, {
-			key: 'toString',
-			value: function toString() {
-				try {
-					var data = { n: this.name };
-	
-					if (!_.isUndefined(this.payload)) data.p = this.payload;
-	
-					if (!_.isUndefined(this.id)) data.i = this.id;
-	
-					if (!_.isUndefined(this.err)) data.e = this.err;
-	
-					return JSON.stringify(data);
-				} catch (err) {
-					throw new Error('Could not stringify message.');
-				}
-			}
-		}, {
 			key: 'createResponse',
 			value: function createResponse(err, payload) {
 				return new Message({ name: '_r', payload: payload, err: err, id: this.id });
@@ -319,6 +302,33 @@ module.exports =
 	
 				this.isResponded_ = true;
 				this.emit('rejected', err);
+			}
+		}, {
+			key: 'toString',
+			value: function toString() {
+				try {
+					var data = { n: this.name };
+	
+					if (!_.isUndefined(this.payload)) data.p = this.payload;
+	
+					if (!_.isUndefined(this.id)) data.i = this.id;
+	
+					if (!_.isUndefined(this.err)) data.e = this.err;
+	
+					return JSON.stringify(data);
+				} catch (err) {
+					throw new Error('Could not stringify message.');
+				}
+			}
+		}, {
+			key: 'dispose',
+			value: function dispose() {
+				var _this2 = this;
+	
+				var events = this.eventNames();
+				events.forEach(function (event) {
+					return _this2.removeAllListeners(event);
+				});
 			}
 		}]);
 	

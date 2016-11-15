@@ -59,7 +59,7 @@ module.exports =
 	
 	var _rooms2 = _interopRequireDefault(_rooms);
 	
-	var _eventEmitterExtra = __webpack_require__(8);
+	var _eventEmitterExtra = __webpack_require__(6);
 	
 	var _eventEmitterExtra2 = _interopRequireDefault(_eventEmitterExtra);
 	
@@ -139,7 +139,7 @@ module.exports =
 	
 	var _message2 = _interopRequireDefault(_message);
 	
-	var _eventEmitterExtra = __webpack_require__(8);
+	var _eventEmitterExtra = __webpack_require__(6);
 	
 	var _eventEmitterExtra2 = _interopRequireDefault(_eventEmitterExtra);
 	
@@ -169,17 +169,17 @@ module.exports =
 	
 			var _this = _possibleConstructorReturn(this, (Connection.__proto__ || Object.getPrototypeOf(Connection)).call(this));
 	
+			_this.id = uuid.v4();
+	
 			_this.socket = socket;
 			_this.server = server;
 	
 			_this.promiseCallbacks = {};
-			// this.id = uuid.v4();
 			_this.socket.on('message', _this.onMessage.bind(_this));
 			_this.socket.on('error', _this.onError.bind(_this));
 			_this.socket.on('close', _this.onClose.bind(_this));
-			_this.socket.on('ping', _this.onPing.bind(_this));
-			_this.socket.on('pong', _this.onPong.bind(_this));
-			//this.socket.on('open', this.onOpen.bind(this));
+	
+			_this.joinRoom('/');
 			return _this;
 		}
 	
@@ -190,11 +190,10 @@ module.exports =
 	
 				var message = _message2.default.parse(data);
 	
-				// Ciplak mesaj, publish
+				// Message without response (no id fields)
 				if (!message.id && _message2.default.reservedNames.indexOf(message.name) == -1) return this.emit(message.name, message);
 	
-				// Bize response geliyor
-	
+				// Message response
 				if (message.name == '_r') {
 					var _promiseCallbacks$mes = this.promiseCallbacks[message.id],
 					    resolve = _promiseCallbacks$mes.resolve,
@@ -212,15 +211,16 @@ module.exports =
 					return;
 				}
 	
-				// Bizden response bekleniyor
-	
+				// Message with response
 				message.once('resolved', function (payload) {
 					_this2.send_(message.createResponse(null, payload));
+					message.dispose();
 				});
 	
 				message.once('rejected', function (err) {
 					if (_.isObject(err) && err instanceof Error && err.name == 'Error') err = { message: err.message, name: 'Error' };
 					_this2.send_(message.createResponse(err));
+					message.dispose();
 				});
 	
 				this.emit(message.name, message);
@@ -228,7 +228,7 @@ module.exports =
 		}, {
 			key: 'onError',
 			value: function onError(error) {
-				this.emit('error', error);
+				this.emit('_error', error);
 			}
 		}, {
 			key: 'onClose',
@@ -241,22 +241,6 @@ module.exports =
 				this.promiseCallbacks = {};
 	
 				this.emit('_close', code, message);
-			}
-		}, {
-			key: 'onPing',
-			value: function onPing(data, flags) {
-				this.emit('_ping', data, flags);
-			}
-		}, {
-			key: 'onPong',
-			value: function onPong(data, flags) {
-				this.emit('_pong', data, flags);
-			}
-		}, {
-			key: 'onOpen',
-			value: function onOpen() {
-				this.joinRoom('/');
-				this.emit('_open');
 			}
 		}, {
 			key: 'joinRoom',
@@ -325,7 +309,7 @@ module.exports =
 	
 	var uuid = _interopRequireWildcard(_nodeUuid);
 	
-	var _eventEmitterExtra = __webpack_require__(8);
+	var _eventEmitterExtra = __webpack_require__(6);
 	
 	var _eventEmitterExtra2 = _interopRequireDefault(_eventEmitterExtra);
 	
@@ -387,23 +371,6 @@ module.exports =
 				return id;
 			}
 		}, {
-			key: 'toString',
-			value: function toString() {
-				try {
-					var data = { n: this.name };
-	
-					if (!_.isUndefined(this.payload)) data.p = this.payload;
-	
-					if (!_.isUndefined(this.id)) data.i = this.id;
-	
-					if (!_.isUndefined(this.err)) data.e = this.err;
-	
-					return JSON.stringify(data);
-				} catch (err) {
-					throw new Error('Could not stringify message.');
-				}
-			}
-		}, {
 			key: 'createResponse',
 			value: function createResponse(err, payload) {
 				return new Message({ name: '_r', payload: payload, err: err, id: this.id });
@@ -428,6 +395,33 @@ module.exports =
 				this.isResponded_ = true;
 				this.emit('rejected', err);
 			}
+		}, {
+			key: 'toString',
+			value: function toString() {
+				try {
+					var data = { n: this.name };
+	
+					if (!_.isUndefined(this.payload)) data.p = this.payload;
+	
+					if (!_.isUndefined(this.id)) data.i = this.id;
+	
+					if (!_.isUndefined(this.err)) data.e = this.err;
+	
+					return JSON.stringify(data);
+				} catch (err) {
+					throw new Error('Could not stringify message.');
+				}
+			}
+		}, {
+			key: 'dispose',
+			value: function dispose() {
+				var _this2 = this;
+	
+				var events = this.eventNames();
+				events.forEach(function (event) {
+					return _this2.removeAllListeners(event);
+				});
+			}
 		}]);
 	
 		return Message;
@@ -451,7 +445,12 @@ module.exports =
 	module.exports = require("node-uuid");
 
 /***/ },
-/* 6 */,
+/* 6 */
+/***/ function(module, exports) {
+
+	module.exports = require("event-emitter-extra");
+
+/***/ },
 /* 7 */
 /***/ function(module, exports, __webpack_require__) {
 
@@ -467,6 +466,12 @@ module.exports =
 	
 	var _ = _interopRequireWildcard(_lodash);
 	
+	var _room = __webpack_require__(8);
+	
+	var _room2 = _interopRequireDefault(_room);
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+	
 	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 	
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -475,31 +480,36 @@ module.exports =
 		function Rooms() {
 			_classCallCheck(this, Rooms);
 	
-			this.rooms = { '/': {} };
+			this.rooms = { '/': new _room2.default('/') };
 		}
 	
 		_createClass(Rooms, [{
 			key: 'add',
 			value: function add(roomName, connection) {
-				if (!this.rooms[roomName]) this.rooms[roomName] = {};
+				if (!this.rooms[roomName]) this.rooms[roomName] = new _room2.default(roomName);
 	
-				this.rooms[roomName][connection.id] = connection;
+				this.rooms[roomName].add(connection);
 			}
 		}, {
 			key: 'remove',
 			value: function remove(roomName, connection) {
 				if (!this.rooms[roomName]) return;
 	
-				delete this.rooms[roomName][connection.id];
+				this.rooms[roomName].remove(connection.id);
 	
-				if (roomName != '/' && _.isEmpty(this.rooms[roomName])) delete this.rooms[roomName];
+				if (roomName != '/' && !this.rooms[roomName].getConnectionsCount()) delete this.rooms[roomName];
 			}
 		}, {
 			key: 'getRoomsOf',
 			value: function getRoomsOf(connection) {
-				return _.keys(_.filter(this.rooms, function (connections) {
-					return connections[connection.id];
-				}));
+				return _.map(_.filter(this.rooms, function (room) {
+					return room.getConnectionById(connection.id);
+				}), 'name');
+			}
+		}, {
+			key: 'getRoom',
+			value: function getRoom(room) {
+				return this.rooms[room];
 			}
 		}, {
 			key: 'removeFromAll',
@@ -507,8 +517,8 @@ module.exports =
 				var _this = this;
 	
 				var rooms = this.getRoomsOf(connection);
-				_.forEach(rooms, function (room) {
-					return _this.remove(room, connection);
+				_.forEach(rooms, function (roomName) {
+					return _this.rooms[roomName].remove(connection);
 				});
 			}
 		}]);
@@ -520,9 +530,81 @@ module.exports =
 
 /***/ },
 /* 8 */
-/***/ function(module, exports) {
+/***/ function(module, exports, __webpack_require__) {
 
-	module.exports = require("event-emitter-extra");
+	'use strict';
+	
+	Object.defineProperty(exports, "__esModule", {
+		value: true
+	});
+	
+	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+	
+	var _lodash = __webpack_require__(4);
+	
+	var _ = _interopRequireWildcard(_lodash);
+	
+	var _message = __webpack_require__(3);
+	
+	var _message2 = _interopRequireDefault(_message);
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+	
+	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
+	
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+	
+	var Room = function () {
+		function Room(name) {
+			var connections = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+	
+			_classCallCheck(this, Room);
+	
+			this.name = name;
+			this.connections = connections;
+		}
+	
+		_createClass(Room, [{
+			key: 'add',
+			value: function add(connection) {
+				this.connections[connection.id] = connection;
+			}
+		}, {
+			key: 'remove',
+			value: function remove(connection) {
+				delete this.connections[connection.id];
+			}
+		}, {
+			key: 'getConnectionById',
+			value: function getConnectionById(connectionId) {
+				return this.connections[connectionId];
+			}
+		}, {
+			key: 'getConnectionsCount',
+			value: function getConnectionsCount() {
+				return Object.keys(this.connections).length;
+			}
+		}, {
+			key: 'broadcast_',
+			value: function broadcast_(message) {
+				_.forEach(this.connections, function (connection) {
+					connection.send_(message);
+				});
+			}
+		}, {
+			key: 'broadcast',
+			value: function broadcast(eventName, payload) {
+				var message = new _message2.default({ name: eventName, payload: payload });
+				_.forEach(this.connections, function (connection, index) {
+					connection.send_(message);
+				});
+			}
+		}]);
+	
+		return Room;
+	}();
+	
+	exports.default = Room;
 
 /***/ }
 /******/ ]);
