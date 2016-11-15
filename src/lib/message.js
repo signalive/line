@@ -79,6 +79,10 @@ export default class Message extends EventEmitter {
 		this.isResponded_ = true;
 		this.emit('rejected', err);
 	}
+
+	dispose() {
+		events.forEach(this.eventNames() => this.removeAllListeners(event));
+	}
 }
 
 Message.reservedNames = ['_r'];

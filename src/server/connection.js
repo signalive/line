@@ -43,12 +43,14 @@ class Connection extends EventEmitter {
 		// Message with response
 		message.once('resolved', payload => {
 			this.send_(message.createResponse(null, payload));
+			message.dispose();
 		});
 
 		message.once('rejected', err => {
 	        if (_.isObject(err) && err instanceof Error && err.name == 'Error')
 	           err = {message: err.message, name: 'Error'};
 			this.send_(message.createResponse(err));
+			message.dispose();
 		});
 
 		this.emit(message.name, message);
