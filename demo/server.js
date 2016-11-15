@@ -13,6 +13,11 @@ server
 		console.log(`Server could not started`, err);
 	});
 
+setInterval(() => {
+	console.log('tick', server.rooms.getRoom('/').getConnectionsCount());
+
+	server.rooms.getRoom('/').broadcast('tick', {foo: Date.now()});
+}, 3000);
 
 server.on('connection', function(connection) {
 	console.log('A client connected');
@@ -37,7 +42,7 @@ server.on('connection', function(connection) {
 		});
 	});
 
-	connection.on('close', code => {
+	connection.on('_close', code => {
 		console.log(` ${code} closed`);
 	})
 })
