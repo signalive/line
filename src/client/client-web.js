@@ -2,7 +2,7 @@ import Message from '../lib/message';
 import EventEmitter from 'event-emitter-extra';
 
 
-class Client extends EventEmitter {
+class WebClient extends EventEmitter {
 	constructor(options) {
 		super();
 
@@ -10,11 +10,13 @@ class Client extends EventEmitter {
 		this.options = options;
 	}
 
+
 	connect(url = 'localhost') {
 		this.ws = new WebSocket(url, this.options);
 		this.readyState = this.ws.readyState;
 		this.bindEvents();
 	}
+
 
 	bindEvents() {
 		this.ws.onopen = this.onOpen.bind(this);
@@ -22,6 +24,7 @@ class Client extends EventEmitter {
 		this.ws.onerror = this.onError.bind(this);
 		this.ws.onmessage = this.onMessage.bind(this);
 	}
+
 
 	onOpen() {
 		this.readyState = this.ws.readyState;
@@ -34,10 +37,12 @@ class Client extends EventEmitter {
 		this.emit('_close', e.code, e.reason);
 	}
 
+
 	onError(err) {
 		this.readyState = this.ws.readyState;
 		this.emit('_error', err);
 	}
+
 
 	onMessage(e) {
 		const message = Message.parse(e.data);
@@ -77,6 +82,7 @@ class Client extends EventEmitter {
 		this.emit(message.name, message);
 	}
 
+
 	send(eventName, payload) {
 		const message = new Message({name: eventName, payload});
 		const messageId = message.setId();
@@ -89,11 +95,14 @@ class Client extends EventEmitter {
 			});
 	}
 
-	send_(message) {
-		this.ws.send(message.toString());
-		return Promise.resolve();
-	}
 
+	send_(message) {
+		return new Promise(resolve => {
+			this.ws.send(message.toString());
+			resolve();
+		});
+	}
 }
 
-module.exports = Client;
+
+module.exports = WebClient;
