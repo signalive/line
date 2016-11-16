@@ -111,6 +111,26 @@ describe('Line Tests', function() {
     });
 
 
+    it('client.send() should fail timeout exceed', function() {
+        const spy = sinon.spy(message => {
+            setTimeout(_ => {
+                message.resolve();
+            }, 200);
+        });
+
+        connections[0].on('test', spy);
+        clients[0].serverTimeout_ = 100;
+
+        return clients[0]
+            .send('test', {hello: 'world'})
+            .should.be.rejectedWith(Error)
+            .then(_ => {
+                spy.should.have.been.calledOnce;
+                spy.should.have.been.calledWithMatch({payload: {hello: 'world'}});
+            });
+    });
+
+
     it('server should send message to specific client', function() {
         const spies = [
             sinon.spy(message => message.resolve()),
@@ -135,6 +155,7 @@ describe('Line Tests', function() {
             });
     });
 
+
     it('server should send message without response to specific client', function() {
         const spy = sinon.spy();
         clients[0].on('test', spy);
@@ -142,6 +163,26 @@ describe('Line Tests', function() {
         return connections[0]
             .sendWithoutResponse('test', {hello: 'world'})
             .then(_ => wait(10))
+            .then(_ => {
+                spy.should.have.been.calledOnce;
+                spy.should.have.been.calledWithMatch({payload: {hello: 'world'}});
+            });
+    });
+
+
+    it('connection.send() should fail if timeout exceed', function() {
+        const spy = sinon.spy(message => {
+            setTimeout(_ => {
+                message.resolve();
+            }, 200);
+        });
+
+        clients[0].on('test', spy);
+        server.options.timeout = 100;
+
+        return connections[0]
+            .send('test', {hello: 'world'})
+            .should.be.rejectedWith(Error)
             .then(_ => {
                 spy.should.have.been.calledOnce;
                 spy.should.have.been.calledWithMatch({payload: {hello: 'world'}});
@@ -162,9 +203,7 @@ describe('Line Tests', function() {
         clients[2].on('test', spies[2]);
         clients[3].on('test', spies[3]);
 
-        server.rooms
-            .getRoom('/')
-            .broadcast('test', {hello: 'world'});
+        server.broadcast('test', {hello: 'world'});
 
         return wait(10)
             .then(_ => {
