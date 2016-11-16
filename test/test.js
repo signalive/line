@@ -124,6 +124,7 @@ describe('Line Tests', function() {
         return clients[0]
             .send('test', {hello: 'world'})
             .should.be.rejectedWith(Error)
+            .then(_ => wait(200))
             .then(_ => {
                 spy.should.have.been.calledOnce;
                 spy.should.have.been.calledWithMatch({payload: {hello: 'world'}});
@@ -183,6 +184,7 @@ describe('Line Tests', function() {
         return connections[0]
             .send('test', {hello: 'world'})
             .should.be.rejectedWith(Error)
+            .then(_ => wait(200))
             .then(_ => {
                 spy.should.have.been.calledOnce;
                 spy.should.have.been.calledWithMatch({payload: {hello: 'world'}});
