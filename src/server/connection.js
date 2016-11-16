@@ -42,7 +42,7 @@ class Connection extends EventEmitter {
 				resolve(message.payload);
 			}
 
-			delete this.promiseCallbacks[message.options.id];
+			delete this.promiseCallbacks[message.id];
 			return;
 		}
 
