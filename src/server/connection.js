@@ -27,14 +27,10 @@ class Connection extends EventEmitter {
 			.send('_h', {id: this.id})
 			.then(_ => {
 				this.isHandshaked_ = true;
-
-				// TODO: We need to send without ack
-				this
-					.send('_hOK')
-					.catch(err => {});
+				return this.sendWithoutResponse('_hOK');
 			})
 			.catch((err) => {
-				console.log('Could not handshake', err);
+				console.log(`Could not handshake with ${this.id}`, err);
 			});
 	}
 
@@ -115,6 +111,11 @@ class Connection extends EventEmitter {
 					this.promiseCallbacks[messageId] = {resolve, reject};
 				});
 			});
+	}
+
+	sendWithoutResponse(eventName, payload) {
+		const message = new Message({name: eventName, payload});
+		return this.send_(message);
 	}
 
 	send_(message) {

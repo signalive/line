@@ -152,7 +152,6 @@ class WebClient extends EventEmitter {
 				this.connectPromiseCallback_ = {};
 			}
 
-			message.resolve();
 			this.updateState_();
 			this.emit('_open');
 			return;
@@ -172,6 +171,12 @@ class WebClient extends EventEmitter {
 					this.promiseCallbacks_[messageId] = {resolve, reject};
 				});
 			});
+	}
+
+
+	sendWithoutResponse(eventName, payload) {
+		const message = new Message({name: eventName, payload});
+		return this.send_(message);
 	}
 
 
