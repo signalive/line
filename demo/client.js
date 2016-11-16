@@ -1,6 +1,13 @@
-const client = new LineClient();
+const client = new LineClient('ws://localhost:3000');
 
-client.connect('ws://localhost:3000');
+client
+	.connect()
+	.then(() => {
+		console.log('connected');
+	})
+	.catch(err => {
+		console.log('could not connect', err);
+	});
 
 client.on('_open', function() {
 	console.log(`Client connected. readyState=${client.readyState}`);
@@ -30,4 +37,3 @@ client.on('_error', function(err) {
 client.on('tick', function(message) {
 	console.log('tick received');
 });
-
