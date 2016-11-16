@@ -7,8 +7,12 @@ import EventEmitter from 'event-emitter-extra';
 class Server extends EventEmitter {
 	constructor(options) {
 		super();
+
 		this.rooms = new Rooms();
-		this.options = options;
+
+		this.options = Object.assign({
+			timeout: 30000
+		}, options || {});
 	}
 
 	start() {

@@ -12,6 +12,7 @@ class WebClient extends EventEmitter {
 		this.ws_ = null;
 		this.id = null;
 		this.readyState = null;
+		this.serverTimeout_ = 30000;
 		this.promiseCallbacks_ = {};
 		this.connectPromiseCallback_ = {};
 		this.disconnectPromiseCallback_ = {};
@@ -116,6 +117,7 @@ class WebClient extends EventEmitter {
 		// Handshake
 		if (message.name == '_h') {
 			this.id = message.payload.id;
+			this.serverTimeout_ = message.payload.timeout;
 
 			if (this.connectPromiseCallback_.resolve) {
 				this.connectPromiseCallback_.resolve();
@@ -129,7 +131,8 @@ class WebClient extends EventEmitter {
 
 		// Message response
 		if (message.name == '_r') {
-			const {resolve, reject} = this.promiseCallbacks_[message.id];
+			const {resolve, reject, timeout} = this.promiseCallbacks_[message.id];
+			clearTimeout(timeout);
 
 			if (message.err) {
 				const err = _.assign(new Error(), message.err);
@@ -166,7 +169,14 @@ class WebClient extends EventEmitter {
 			.send_(message)
 			.then(_ => {
 				return new Promise((resolve, reject) => {
-					this.promiseCallbacks_[messageId] = {resolve, reject};
+					const timeout = setTimeout(_ => {
+						const {resolve, reject, timeout} = this.promiseCallbacks_[messageId];
+						clearTimeout(timeout);
+						reject(new Error('Timeout reached'));
+						delete this.promiseCallbacks_[messageId];
+					}, this.serverTimeout_);
+
+					this.promiseCallbacks_[messageId] = {resolve, reject, timeout};
 				});
 			});
 	}

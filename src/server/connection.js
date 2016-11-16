@@ -23,7 +23,10 @@ class Connection extends EventEmitter {
 		this.joinRoom('/');
 
 		this
-			.sendWithoutResponse('_h', {id: this.id})
+			.sendWithoutResponse('_h', {
+				id: this.id,
+				timeout: this.server.options.timeout
+			})
 			.catch((err) => {
 				console.log(`Could not handshake with ${this.id}`, err);
 			});
@@ -39,7 +42,8 @@ class Connection extends EventEmitter {
 
 		// Message response
 		if (message.name == '_r') {
-			const {resolve, reject} = this.promiseCallbacks[message.id];
+			const {resolve, reject, timeout} = this.promiseCallbacks[message.id];
+			clearTimeout(timeout);
 
 			if (message.err) {
 				const err = assign(new Error(), message.err);
@@ -103,7 +107,14 @@ class Connection extends EventEmitter {
 			.send_(message)
 			.then(_ => {
 				return new Promise((resolve, reject) => {
-					this.promiseCallbacks[messageId] = {resolve, reject};
+					const timeout = setTimeout(_ => {
+						const {resolve, reject, timeout} = this.promiseCallbacks[messageId];
+						clearTimeout(timeout);
+						reject(new Error('Timeout reached'));
+						delete this.promiseCallbacks[messageId];
+					}, this.server.options.timeout);
+
+					this.promiseCallbacks[messageId] = {resolve, reject, timeout};
 				});
 			});
 	}
