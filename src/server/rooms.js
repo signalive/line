@@ -20,7 +20,7 @@ export default class Rooms {
 		if(!this.rooms[roomName])
 			return;
 
-		this.rooms[roomName].remove(connection.id);
+		this.rooms[roomName].remove(connection);
 
 		if (roomName != '/' && !this.rooms[roomName].getConnectionsCount())
 			delete this.rooms[roomName];
