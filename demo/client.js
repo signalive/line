@@ -37,3 +37,14 @@ client.on('_error', function(err) {
 client.on('tick', function(message) {
 	console.log('tick received');
 });
+
+setTimeout(() => {
+	client
+		.disconnect()
+		.then(() => {
+			console.log('disconnected');
+		})
+		.catch(err => {
+			console.log('could not disconnected', err);
+		});
+}, 10000);

@@ -13,6 +13,7 @@ class WebClient extends EventEmitter {
 		this.readyState = null;
 		this.promiseCallbacks_ = {};
 		this.connectPromiseCallback_ = {};
+		this.disconnectPromiseCallback_ = {};
 	}
 
 
@@ -30,6 +31,23 @@ class WebClient extends EventEmitter {
 					this.connectPromiseCallback_ = {resolve, reject};
 					this.updateState_();
 					this.bindEvents_();
+				});
+		}
+	}
+
+
+	disconnect(code, reason) {
+		switch (this.readyState) {
+			case null:
+			case 3:
+				return Promise.reject(new Error('Socket is not connected.'));
+			case 2:
+				return Promise.reject(new Error('Could not disconnect, already disconnecting...'));
+			default:
+				return new Promise((resolve, reject) => {
+					this.ws_.close(code, reason);
+					this.disconnectPromiseCallback_ = {resolve, reject};
+					this.updateState_();
 				});
 		}
 	}
@@ -67,6 +85,11 @@ class WebClient extends EventEmitter {
 			this.connectPromiseCallback_.reject();
 			this.connectPromiseCallback_ = {};
 		}
+
+		if (this.disconnectPromiseCallback_.resolve) {
+			this.disconnectPromiseCallback_.resolve();
+			this.disconnectPromiseCallback_ = {};
+		}
 	}
 
 
@@ -77,6 +100,11 @@ class WebClient extends EventEmitter {
 		if (this.connectPromiseCallback_.reject) {
 			this.connectPromiseCallback_.reject(err);
 			this.connectPromiseCallback_ = {};
+		}
+
+		if (this.disconnectPromiseCallback_.reject) {
+			this.disconnectPromiseCallback_.reject(err);
+			this.disconnectPromiseCallback_ = {};
 		}
 	}
 
