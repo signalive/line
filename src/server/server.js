@@ -56,6 +56,11 @@ class Server extends EventEmitter {
 	getConnectionById(id) {
 		return this.rooms.getRoom('/').getConnectionById(id);
 	}
+
+
+	broadcast(eventName, payload) {
+		return this.rooms.getRoom('/').broadcast(eventName, payload);
+	}
 }
 
 module.exports = Server;
