@@ -130,7 +130,7 @@ class WebClient extends EventEmitter {
 		}
 
 		// Message response
-		if (message.name == '_r') {
+		if (message.name == '_r' && this.promiseCallbacks_[message.id]) {
 			const {resolve, reject, timeout} = this.promiseCallbacks_[message.id];
 			clearTimeout(timeout);
 
@@ -170,7 +170,7 @@ class WebClient extends EventEmitter {
 			.then(_ => {
 				return new Promise((resolve, reject) => {
 					const timeout = setTimeout(_ => {
-						const {resolve, reject, timeout} = this.promiseCallbacks_[messageId];
+						const {reject, timeout} = this.promiseCallbacks_[messageId];
 						clearTimeout(timeout);
 						reject(new Error('Timeout reached'));
 						delete this.promiseCallbacks_[messageId];

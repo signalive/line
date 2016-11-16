@@ -41,7 +41,7 @@ class Connection extends EventEmitter {
 			return this.emit(message.name, message);
 
 		// Message response
-		if (message.name == '_r') {
+		if (message.name == '_r' && this.promiseCallbacks[message.id]) {
 			const {resolve, reject, timeout} = this.promiseCallbacks[message.id];
 			clearTimeout(timeout);
 
@@ -108,7 +108,7 @@ class Connection extends EventEmitter {
 			.then(_ => {
 				return new Promise((resolve, reject) => {
 					const timeout = setTimeout(_ => {
-						const {resolve, reject, timeout} = this.promiseCallbacks[messageId];
+						const {reject, timeout} = this.promiseCallbacks[messageId];
 						clearTimeout(timeout);
 						reject(new Error('Timeout reached'));
 						delete this.promiseCallbacks[messageId];
