@@ -12,6 +12,7 @@ const Client = require('../dist/client-node');
 
 describe('Line Tests', function() {
     let server;
+    let connections;
     let clients;
 
 
@@ -29,6 +30,9 @@ describe('Line Tests', function() {
             .then(_ => {
                 const tasks = clients.map(client => client.connect());
                 return Promise.all(tasks);
+            })
+            .then(_ => {
+                connections = clients.map(client => server.getConnectionById(client.id));
             });
     });
 
@@ -39,6 +43,7 @@ describe('Line Tests', function() {
             .then(_ => {
                 server = null;
                 clients = null;
+                connections = null;
             });
     });
 
@@ -68,7 +73,6 @@ describe('Line Tests', function() {
 
 
     it('client should send message to server', function() {
-        const connections = clients.map(client => server.getConnectionById(client.id));
         const spies = [
             sinon.spy(message => message.resolve()),
             sinon.spy(message => message.resolve()),
@@ -93,8 +97,21 @@ describe('Line Tests', function() {
     });
 
 
+    it('client should send message without response to server', function() {
+        const spy = sinon.spy();
+        connections[0].on('test', spy);
+
+        return clients[0]
+            .sendWithoutResponse('test', {hello: 'world'})
+            .then(_ => wait(10))
+            .then(_ => {
+                spy.should.have.been.calledOnce;
+                spy.should.have.been.calledWithMatch({payload: {hello: 'world'}});
+            });
+    });
+
+
     it('server should send message to specific client', function() {
-        const connections = clients.map(client => server.getConnectionById(client.id));
         const spies = [
             sinon.spy(message => message.resolve()),
             sinon.spy(message => message.resolve()),
@@ -115,6 +132,19 @@ describe('Line Tests', function() {
                 spies[1].should.not.have.been.called;
                 spies[2].should.not.have.been.called;
                 spies[3].should.not.have.been.called;
+            });
+    });
+
+    it('server should send message without response to specific client', function() {
+        const spy = sinon.spy();
+        clients[0].on('test', spy);
+
+        return connections[0]
+            .sendWithoutResponse('test', {hello: 'world'})
+            .then(_ => wait(10))
+            .then(_ => {
+                spy.should.have.been.calledOnce;
+                spy.should.have.been.calledWithMatch({payload: {hello: 'world'}});
             });
     });
 
@@ -151,7 +181,6 @@ describe('Line Tests', function() {
 
 
     it('server should broadcast message to specific room', function() {
-        const connections = clients.map(client => server.getConnectionById(client.id));
         const spies = [
             sinon.spy(),
             sinon.spy(),
