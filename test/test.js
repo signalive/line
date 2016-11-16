@@ -163,6 +163,7 @@ describe('Line Tests', function() {
         connections[1].joinRoom('room1');
         connections[2].joinRoom('room2');
         connections[3].joinRoom('room2');
+        connections[3].leaveRoom('room2');
 
         clients[0].on('test', spies[0]);
         clients[1].on('test', spies[1]);
@@ -185,8 +186,7 @@ describe('Line Tests', function() {
                 spies[1].should.have.been.calledWithMatch({payload: {hello: 'from room1'}});
                 spies[2].should.have.been.calledOnce;
                 spies[2].should.have.been.calledWithMatch({payload: {hello: 'from room2'}});
-                spies[3].should.have.been.calledOnce;
-                spies[3].should.have.been.calledWithMatch({payload: {hello: 'from room2'}});
+                spies[3].should.not.have.been.called;
             });
     });
 });
