@@ -1,4 +1,4 @@
-import * as _ from 'lodash';
+import forEach from 'lodash/forEach';
 import Message from '../lib/message';
 
 
@@ -25,14 +25,14 @@ export default class Room {
 	}
 
 	broadcast_(message) {
-		_.forEach(this.connections, connection => {
+		forEach(this.connections, connection => {
 			connection.send_(message)
 		});
 	}
 
 	broadcast(eventName, payload) {
 		const message = new Message({name: eventName, payload});
-		_.forEach(this.connections, (connection, index) => {
+		forEach(this.connections, (connection, index) => {
 			connection.send_(message)
 		});
 	}

@@ -1,4 +1,4 @@
-import * as _ from 'lodash';
+import isUndefined from 'lodash/isUndefined';
 import * as uuid from 'node-uuid';
 import EventEmitter from 'event-emitter-extra';
 
@@ -40,7 +40,7 @@ export default class Message extends EventEmitter {
 	}
 
 	resolve(payload) {
-		if (_.isUndefined(this.id))
+		if (isUndefined(this.id))
 			return console.warn('[line] A message without an id cannot be resolved.');
 
 		if (this.isResponded_)
@@ -51,7 +51,7 @@ export default class Message extends EventEmitter {
 	}
 
 	reject(err) {
-		if (_.isUndefined(this.id))
+		if (isUndefined(this.id))
 			return console.warn('[line] A message without an id cannot be rejected.');
 
 		if (this.isResponded_)
@@ -65,13 +65,13 @@ export default class Message extends EventEmitter {
 		try {
 			const data = {n: this.name};
 
-			if (!_.isUndefined(this.payload))
+			if (!isUndefined(this.payload))
 				data.p = this.payload;
 
-			if (!_.isUndefined(this.id))
+			if (!isUndefined(this.id))
 				data.i = this.id;
 
-			if (!_.isUndefined(this.err))
+			if (!isUndefined(this.err))
 				data.e = this.err;
 
 			return JSON.stringify(data);
@@ -86,4 +86,4 @@ export default class Message extends EventEmitter {
 	}
 }
 
-Message.reservedNames = ['_r'];
+Message.reservedNames = ['_r', '_h'];

@@ -27,13 +27,39 @@ class Server extends EventEmitter {
 		})
 	}
 
+
+	stop() {
+		if (!this.server) {
+			const err = new Error('Could not stop server. Server is probably not started, or already stopped.');
+			return Promise.reject(err);
+		}
+
+		return new Promise(resolve => {
+			this.server.close();
+			this.server = null;
+			resolve();
+		});
+	}
+
+
 	bindEvents() {
 		this.server.on('connection', this.onConnection.bind(this));
 	}
 
+
 	onConnection(socket) {
 		const connection = new Connection(socket, this);
 		this.emit('connection', connection);
+	}
+
+
+	getConnectionById(id) {
+		return this.rooms.getRoom('/').getConnectionById(id);
+	}
+
+
+	broadcast(eventName, payload) {
+		return this.rooms.getRoom('/').broadcast(eventName, payload);
 	}
 }
 

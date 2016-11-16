@@ -1,6 +1,8 @@
 import Message from '../lib/message';
 import EventEmitter from 'event-emitter-extra';
-import * as _ from 'lodash';
+import assign from 'lodash/assign';
+import forEach from 'lodash/forEach';
+import isObject from 'lodash/isObject';
 import * as uuid from 'node-uuid';
 
 
@@ -19,6 +21,12 @@ class Connection extends EventEmitter {
 		this.socket.on('close', this.onClose.bind(this));
 
 		this.joinRoom('/');
+
+		this
+			.sendWithoutResponse('_h', {id: this.id})
+			.catch((err) => {
+				console.log(`Could not handshake with ${this.id}`, err);
+			});
 	}
 
 
@@ -34,13 +42,13 @@ class Connection extends EventEmitter {
 			const {resolve, reject} = this.promiseCallbacks[message.id];
 
 			if (message.err) {
-				const err = _.assign(new Error(), message.err);
+				const err = assign(new Error(), message.err);
 				reject(err);
 			} else {
 				resolve(message.payload);
 			}
 
-			delete this.promiseCallbacks[message.options.id];
+			delete this.promiseCallbacks[message.id];
 			return;
 		}
 
@@ -51,7 +59,7 @@ class Connection extends EventEmitter {
 		});
 
 		message.once('rejected', err => {
-	        if (_.isObject(err) && err instanceof Error && err.name == 'Error')
+	        if (isObject(err) && err instanceof Error && err.name == 'Error')
 	           err = {message: err.message, name: 'Error'};
 			this.send_(message.createResponse(err));
 			message.dispose();
@@ -67,7 +75,7 @@ class Connection extends EventEmitter {
 	onClose(code, message) {
 		this.server.rooms.removeFromAll(this);
 
-		_.forEach(this.promiseCallbacks, (callbacks) => {
+		forEach(this.promiseCallbacks, (callbacks) => {
 			callbacks.reject(new Error('Socket connection closed!'));
 		});
 		this.promiseCallbacks = {};
@@ -98,6 +106,11 @@ class Connection extends EventEmitter {
 					this.promiseCallbacks[messageId] = {resolve, reject};
 				});
 			});
+	}
+
+	sendWithoutResponse(eventName, payload) {
+		const message = new Message({name: eventName, payload});
+		return this.send_(message);
 	}
 
 	send_(message) {
