@@ -21,6 +21,20 @@ class Connection extends EventEmitter {
 		this.socket.on('close', this.onClose.bind(this));
 
 		this.joinRoom('/');
+
+		this.isHandshaked_ = false;
+		this
+			.send('_h', {id: this.id})
+			.then(_ => {
+				this.isHandshaked_ = true;
+
+				this
+					.send('_hOK')
+					.catch(err => {});
+			})
+			.catch((err) => {
+				console.log('Could not handshake', err);
+			});
 	}
 
 

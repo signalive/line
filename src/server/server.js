@@ -46,9 +46,15 @@ class Server extends EventEmitter {
 		this.server.on('connection', this.onConnection.bind(this));
 	}
 
+
 	onConnection(socket) {
 		const connection = new Connection(socket, this);
 		this.emit('connection', connection);
+	}
+
+
+	getConnectionById(id) {
+		return this.rooms.getRoom('/').getConnectionById(id);
 	}
 }
 
