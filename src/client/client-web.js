@@ -10,6 +10,7 @@ class WebClient extends EventEmitter {
 		this.options = options;
 
 		this.ws_ = null;
+		this.id = null;
 		this.readyState = null;
 		this.promiseCallbacks_ = {};
 		this.connectPromiseCallback_ = {};
@@ -67,18 +68,14 @@ class WebClient extends EventEmitter {
 
 
 	onOpen() {
-		this.updateState_();
-		this.emit('_open');
-
-		if (this.connectPromiseCallback_.resolve) {
-			this.connectPromiseCallback_.resolve();
-			this.connectPromiseCallback_ = {};
-		}
+		// this.updateState_();
+		// this.emit('_open');
 	}
 
 
 	onClose(e) {
 		this.updateState_();
+		this.id = null;
 		this.emit('_close', e.code, e.reason);
 
 		if (this.connectPromiseCallback_.reject) {
@@ -143,6 +140,23 @@ class WebClient extends EventEmitter {
 			this.send_(message.createResponse(err));
 			message.dispose();
 		});
+
+		// Handshake
+		if (message.name == '_h') {
+			this.id = message.payload.id;
+			message.resolve();
+			return;
+		} else if (message.name == '_hOK') {
+			if (this.connectPromiseCallback_.resolve) {
+				this.connectPromiseCallback_.resolve();
+				this.connectPromiseCallback_ = {};
+			}
+
+			message.resolve();
+			this.updateState_();
+			this.emit('_open');
+			return;
+		}
 
 		this.emit(message.name, message);
 	}

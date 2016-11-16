@@ -28,6 +28,7 @@ class Connection extends EventEmitter {
 			.then(_ => {
 				this.isHandshaked_ = true;
 
+				// TODO: We need to send without ack
 				this
 					.send('_hOK')
 					.catch(err => {});
