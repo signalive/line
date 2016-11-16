@@ -1,3 +1,4 @@
+import Utils from '../lib/utils';
 import Message from '../lib/message';
 import EventEmitter from 'event-emitter-extra';
 import assign from 'lodash/assign';
@@ -20,15 +21,20 @@ class Connection extends EventEmitter {
 		this.socket.on('error', this.onError.bind(this));
 		this.socket.on('close', this.onClose.bind(this));
 
-		this.joinRoom('/');
+		this.handshake_ = false;
 
-		this
-			.sendWithoutResponse('_h', {
-				id: this.id,
-				timeout: this.server.options.timeout
+		Utils.retry(_ => this.send('_h',
+			{id: this.id, timeout: this.server.options.timeout}),
+			{maxCount: 3, initialDelay: 1, increaseFactor: 1})
+			.then(_ => {
+				this.joinRoom('/');
+				this.handshake_ = true;
+				this.emit('_handshakeOk');
 			})
-			.catch((err) => {
-				console.log(`Could not handshake with ${this.id}`, err);
+			.catch(err => {
+				this.handshake_ = false;
+				console.log(`Handshake failed for ${this.id}.`);
+				this.onClose(500, err);
 			});
 	}
 

@@ -119,14 +119,19 @@ class WebClient extends EventEmitter {
 			this.id = message.payload.id;
 			this.serverTimeout_ = message.payload.timeout;
 
-			if (this.connectPromiseCallback_.resolve) {
-				this.connectPromiseCallback_.resolve();
-				this.connectPromiseCallback_ = {};
-			}
+			return this
+				.send_(message.createResponse())
+				.then(_ => {
+					message.dispose();
 
-			this.updateState_();
-			this.emit('_open');
-			return;
+					if (this.connectPromiseCallback_.resolve) {
+						this.connectPromiseCallback_.resolve();
+						this.connectPromiseCallback_ = {};
+					}
+
+					this.updateState_();
+					this.emit('_open');
+				});
 		}
 
 		// Message response

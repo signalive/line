@@ -53,7 +53,7 @@ class Server extends EventEmitter {
 
 	onConnection(socket) {
 		const connection = new Connection(socket, this);
-		this.emit('connection', connection);
+		connection.on('_handshakeOk', () => this.emit('connection', connection));
 	}
 
 
