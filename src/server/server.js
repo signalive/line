@@ -34,9 +34,11 @@ class Server extends EventEmitter {
 			return Promise.reject(err);
 		}
 
-		this.server.close();
-		this.server = null;
-		return Promise.resolve();
+		return new Promise(resolve => {
+			this.server.close();
+			this.server = null;
+			resolve();
+		});
 	}
 
 
