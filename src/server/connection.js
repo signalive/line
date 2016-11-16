@@ -22,13 +22,8 @@ class Connection extends EventEmitter {
 
 		this.joinRoom('/');
 
-		this.isHandshaked_ = false;
 		this
-			.send('_h', {id: this.id})
-			.then(_ => {
-				this.isHandshaked_ = true;
-				return this.sendWithoutResponse('_hOK');
-			})
+			.sendWithoutResponse('_h', {id: this.id})
 			.catch((err) => {
 				console.log(`Could not handshake with ${this.id}`, err);
 			});
