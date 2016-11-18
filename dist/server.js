@@ -82,7 +82,10 @@ module.exports =
 			_this.rooms = new _rooms2.default();
 	
 			_this.options = Object.assign({
-				timeout: 30000
+				timeout: 30000,
+				maxReconnectDelay: 60,
+				initialReconnectDelay: 1,
+				reconnectIncrementFactor: 1
 			}, options || {});
 			return _this;
 		}
@@ -225,9 +228,14 @@ module.exports =
 			_this.socket.on('close', _this.onClose.bind(_this));
 	
 			_this.handshake_ = false;
-	
 			_utils2.default.retry(function (_) {
-				return _this.send('_h', { id: _this.id, timeout: _this.server.options.timeout });
+				return _this.send('_h', {
+					id: _this.id,
+					timeout: _this.server.options.timeout,
+					maxReconnectDelay: _this.server.options.maxReconnectDelay,
+					initialReconnectDelay: _this.server.options.initialReconnectDelay,
+					reconnectIncrementFactor: _this.server.options.reconnectIncrementFactor
+				});
 			}, { maxCount: 3, initialDelay: 1, increaseFactor: 1 }).then(function (_) {
 				_this.joinRoom('/');
 				_this.handshake_ = true;
@@ -326,6 +334,9 @@ module.exports =
 				return this.send_(message).then(function (_) {
 					return new Promise(function (resolve, reject) {
 						var timeout = setTimeout(function (_) {
+							/* Connections has been closed. */
+							if (!_this3.promiseCallbacks[messageId]) return;
+	
 							var _promiseCallbacks$mes2 = _this3.promiseCallbacks[messageId],
 							    reject = _promiseCallbacks$mes2.reject,
 							    timeout = _promiseCallbacks$mes2.timeout;

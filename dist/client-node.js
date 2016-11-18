@@ -164,7 +164,12 @@ module.exports =
 			_this.id = null;
 			_this.readyState = null;
 			_this.reconnect = options.reconnect;
+	
 			_this.serverTimeout_ = 30000;
+			_this.maxReconnectDelay = 60;
+			_this.initialReconnectDelay = 1;
+			_this.reconnectIncrementFactor = 2;
+	
 			_this.promiseCallbacks_ = {};
 			_this.connectPromiseCallback_ = {};
 			_this.disconnectPromiseCallback_ = {};
@@ -284,7 +289,11 @@ module.exports =
 				this.retrying_ = true;
 				_utils2.default.retry(function (_) {
 					return _this4.connect();
-				}, { maxDelay: 60, initialDelay: 1, increaseFactor: 2 }).then(function (_) {
+				}, {
+					maxCount: this.maxReconnectDelay,
+					initialDelay: this.initialReconnectDelay,
+					increaseFactor: this.reconnectIncrementFactor
+				}).then(function (_) {
 					_this4.retrying_ = false;
 				});
 			}
@@ -321,6 +330,9 @@ module.exports =
 				if (message.name == '_h') {
 					this.id = message.payload.id;
 					this.serverTimeout_ = message.payload.timeout;
+					this.maxReconnectDelay = message.payload.maxReconnectDelay;
+					this.initialReconnectDelay = message.payload.initialReconnectDelay;
+					this.reconnectIncrementFactor = message.payload.reconnectIncrementFactor;
 	
 					return this.send_(message.createResponse()).then(function (_) {
 						message.dispose();
@@ -379,6 +391,9 @@ module.exports =
 				return this.send_(message).then(function (_) {
 					return new Promise(function (resolve, reject) {
 						var timeout = setTimeout(function (_) {
+							/* Connections has been closed. */
+							if (!_this6.promiseCallbacks[messageId]) return;
+	
 							var _promiseCallbacks_$me2 = _this6.promiseCallbacks_[messageId],
 							    reject = _promiseCallbacks_$me2.reject,
 							    timeout = _promiseCallbacks_$me2.timeout;
