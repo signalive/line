@@ -1,62 +1,70 @@
 import Message from '../lib/message';
+import Utils from '../lib/utils';
 import EventEmitter from 'event-emitter-extra';
 
 
 class WebClient extends EventEmitter {
-	constructor(url = 'ws://localhost', options) {
+	constructor(url = 'ws://localhost', options = {}) {
 		super();
 
 		this.url = url;
+
 		this.options = options;
 
 		this.ws_ = null;
 		this.id = null;
 		this.readyState = null;
+		this.reconnect = options.reconnect;
 		this.serverTimeout_ = 30000;
 		this.promiseCallbacks_ = {};
 		this.connectPromiseCallback_ = {};
 		this.disconnectPromiseCallback_ = {};
+
+		this.state = WebClient.States.READY;
 	}
 
 
 	connect() {
-		switch (this.readyState) {
-			case 0:
-				return Promise.reject(new Error('Could not connect, already trying to connect...'));
-			case 1:
-				return Promise.reject(new Error('Socket already connected.'));
-			case 2:
-				return Promise.reject(new Error('Could not connect, socket is closing. Try again after closure.'));
-			default:
+		switch (this.state) {
+			case WebClient.States.CONNECTING:
+				return Promise.reject(new Error('Could not connect, already trying to connect to a host...'));
+			case WebClient.States.CONNECTED:
+				return Promise.reject(new Error('Already connected.'));
+			case WebClient.States.CLOSING:
+				return Promise.reject(new Error('Terminating an active connecting, try again later.'));
+			case WebClient.States.CLOSED:
+			case WebClient.States.READY:
 				return new Promise((resolve, reject) => {
-					this.ws_ = new WebSocket(this.url, this.options);
-					this.connectPromiseCallback_ = {resolve, reject};
-					this.updateState_();
-					this.bindEvents_();
+					setTimeout(_ => {
+						this.ws_ = new WebSocket(this.url);
+						this.connectPromiseCallback_ = {resolve, reject};
+						this.bindEvents_();
+
+						this.state = WebClient.States.CONNECTING;
+						this.emit(WebClient.Events.CONNECTING);
+					}, 0);
 				});
+			default:
+				return Promise.reject(new Error('Could not connect, unknown state.'))
 		}
 	}
 
 
 	disconnect(code, reason) {
-		switch (this.readyState) {
-			case null:
-			case 3:
-				return Promise.reject(new Error('Socket is not connected.'));
-			case 2:
-				return Promise.reject(new Error('Could not disconnect, already disconnecting...'));
-			default:
+		switch (this.state) {
+			case WebClient.States.ERROR:
+			case WebClient.States.CONNECTED:
+			case WebClient.States.CONNECTING:
 				return new Promise((resolve, reject) => {
 					this.ws_.close(code, reason);
+					this.state = WebClient.States.CLOSING;
 					this.disconnectPromiseCallback_ = {resolve, reject};
-					this.updateState_();
 				});
+			case WebClient.States.CLOSED:
+				return Promise.reject(new Error('There is no connection to disconnect.'));
+			case WebClient.States.CLOSING:
+				return Promise.reject(new Error('Already terminating a connecting, try again later.'));
 		}
-	}
-
-
-	updateState_() {
-		this.readyState = this.ws_.readyState;
 	}
 
 
@@ -68,17 +76,16 @@ class WebClient extends EventEmitter {
 	}
 
 
-	onOpen() {
-		// this.updateState_();
-		// this.emit('_open');
+	unBindEvents_() {
+		if (!this.ws_) return;
+		delete this.ws_.onopen;
+		delete this.ws_.onclose;
+		delete this.ws_.onerror;
+		delete this.ws_.onmessage;
 	}
 
 
-	onClose(e) {
-		this.updateState_();
-		this.id = null;
-		this.emit('_close', e.code, e.reason);
-
+	disposeConnectionPromisses_() {
 		if (this.connectPromiseCallback_.reject) {
 			this.connectPromiseCallback_.reject();
 			this.connectPromiseCallback_ = {};
@@ -91,17 +98,57 @@ class WebClient extends EventEmitter {
 	}
 
 
-	onError(err) {
-		this.updateState_();
-		this.emit('_error', err);
+	onOpen() {
+		// this.updateState_();
+		// this.emit('_open');
+	}
+
+
+	onClose(e) {
+		this.unBindEvents_();
+		this.id = null;
+		this.ws_ = null;
+		this.state = WebClient.States.CLOSED;
+
+		this.emit(WebClient.Events.CLOSED, e.code, e.reason);
 
 		if (this.connectPromiseCallback_.reject) {
-			this.connectPromiseCallback_.reject(err);
+			this.connectPromiseCallback_.reject();
+			this.connectPromiseCallback_ = {};
+		}
+
+		if (this.disconnectPromiseCallback_.resolve) {
+			this.disconnectPromiseCallback_.resolve();
+			this.disconnectPromiseCallback_ = {};
+		}
+
+		if (!this.reconnect || this.retrying_) return;
+
+		this.retrying_ = true;
+		Utils
+			.retry(_ => this.connect(),
+				{maxDelay: 60, initialDelay: 1, increaseFactor: 2})
+			.then(_ => {
+				this.retrying_ = false;
+			});
+	}
+
+
+	onError(err) {
+		const eventName = this.state == WebClient.States.CONENCTING ?
+				WebClient.Events.CONNECTING_ERROR : WebClient.Events.ERROR;
+
+		this.state = WebClient.States.CLOSED;
+
+		this.emit(eventName, err);
+
+		if (this.connectPromiseCallback_.reject) {
+			this.connectPromiseCallback_.reject();
 			this.connectPromiseCallback_ = {};
 		}
 
 		if (this.disconnectPromiseCallback_.reject) {
-			this.disconnectPromiseCallback_.reject(err);
+			this.disconnectPromiseCallback_.reject();
 			this.disconnectPromiseCallback_ = {};
 		}
 	}
@@ -129,8 +176,8 @@ class WebClient extends EventEmitter {
 						this.connectPromiseCallback_ = {};
 					}
 
-					this.updateState_();
-					this.emit('_open');
+					this.state = WebClient.States.CONNECTED;
+					this.emit(WebClient.Events.CONNECTED);
 				});
 		}
 
@@ -200,6 +247,24 @@ class WebClient extends EventEmitter {
 		});
 	}
 }
+
+WebClient.States = {
+	READY: -1,
+	CONNECTING: 0,
+	CONNECTED: 1,
+	CLOSING: 2,
+	CLOSED: 3
+};
+
+WebClient.Events = {
+	READY: '_ready',
+	CONNECTING: '_connecting',
+	CONNECTING_ERROR: '_connecting_error',
+	CONNECTED: '_connected',
+	CLOSING: '_closing',
+	CLOSED: '_closed',
+	ERROR: '_error'
+};
 
 
 module.exports = WebClient;
