@@ -15,7 +15,12 @@ class WebClient extends EventEmitter {
 		this.id = null;
 		this.readyState = null;
 		this.reconnect = options.reconnect;
+
 		this.serverTimeout_ = 30000;
+		this.maxReconnectDelay = 60;
+		this.initialReconnectDelay = 1;
+		this.reconnectIncrementFactor = 2;
+
 		this.promiseCallbacks_ = {};
 		this.connectPromiseCallback_ = {};
 		this.disconnectPromiseCallback_ = {};
@@ -126,8 +131,13 @@ class WebClient extends EventEmitter {
 
 		this.retrying_ = true;
 		Utils
-			.retry(_ => this.connect(),
-				{maxDelay: 60, initialDelay: 1, increaseFactor: 2})
+			.retry(
+				_ => this.connect(),
+				{
+					maxCount: this.maxReconnectDelay,
+					initialDelay: this.initialReconnectDelay,
+					increaseFactor: this.reconnectIncrementFactor
+				})
 			.then(_ => {
 				this.retrying_ = false;
 			});
@@ -165,6 +175,9 @@ class WebClient extends EventEmitter {
 		if (message.name == '_h') {
 			this.id = message.payload.id;
 			this.serverTimeout_ = message.payload.timeout;
+			this.maxReconnectDelay = message.payload.maxReconnectDelay;
+			this.initialReconnectDelay = message.payload.initialReconnectDelay;
+			this.reconnectIncrementFactor = message.payload.reconnectIncrementFactor;
 
 			return this
 				.send_(message.createResponse())

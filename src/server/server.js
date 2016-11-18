@@ -11,7 +11,10 @@ class Server extends EventEmitter {
 		this.rooms = new Rooms();
 
 		this.options = Object.assign({
-			timeout: 30000
+			timeout: 30000,
+			maxReconnectDelay: 60,
+			initialReconnectDelay: 1,
+			reconnectIncrementFactor: 1
 		}, options || {});
 	}
 

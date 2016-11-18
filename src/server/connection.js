@@ -22,9 +22,14 @@ class Connection extends EventEmitter {
 		this.socket.on('close', this.onClose.bind(this));
 
 		this.handshake_ = false;
-
 		Utils.retry(_ => this.send('_h',
-			{id: this.id, timeout: this.server.options.timeout}),
+			{
+				id: this.id,
+				timeout: this.server.options.timeout,
+				maxReconnectDelay: this.server.options.maxReconnectDelay,
+				initialReconnectDelay: this.server.options.initialReconnectDelay,
+				reconnectIncrementFactor: this.server.options.reconnectIncrementFactor
+			}),
 			{maxCount: 3, initialDelay: 1, increaseFactor: 1})
 			.then(_ => {
 				this.joinRoom('/');
