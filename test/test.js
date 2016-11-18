@@ -55,8 +55,8 @@ describe('Line Tests', function() {
 
         const client1 = new Client('ws://localhost:3000');
         const client2 = new Client('ws://localhost:3000');
-        client1.on('_open', client1OpenSpy);
-        client2.on('_open', client2OpenSpy);
+        client1.on('_connected', client1OpenSpy);
+        client2.on('_connected', client2OpenSpy);
 
         server.on('connection', serverConnectionSpy);
 
