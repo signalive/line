@@ -183,15 +183,18 @@ class WebClient extends EventEmitter {
 				.send_(message.createResponse())
 				.then(_ => {
 					message.dispose();
-
-					if (this.connectPromiseCallback_.resolve) {
-						this.connectPromiseCallback_.resolve();
-						this.connectPromiseCallback_ = {};
-					}
-
-					this.state = WebClient.States.CONNECTED;
-					this.emit(WebClient.Events.CONNECTED);
 				});
+		}
+
+		if (message.name == '_h2') {
+			if (this.connectPromiseCallback_.resolve) {
+				this.connectPromiseCallback_.resolve();
+				this.connectPromiseCallback_ = {};
+			}
+
+			this.state = WebClient.States.CONNECTED;
+			this.emit(WebClient.Events.CONNECTED);
+			return;
 		}
 
 		// Message response

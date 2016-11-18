@@ -31,6 +31,7 @@ class Connection extends EventEmitter {
 				reconnectIncrementFactor: this.server.options.reconnectIncrementFactor
 			}),
 			{maxCount: 3, initialDelay: 1, increaseFactor: 1})
+			.then(_ => this.sendWithoutResponse('_h2'))
 			.then(_ => {
 				this.joinRoom('/');
 				this.handshake_ = true;
