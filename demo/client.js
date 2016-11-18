@@ -1,16 +1,28 @@
-const client = new LineClient('ws://localhost:3000');
+const client = new LineClient('ws://localhost:3000', {reconnect: true});
 
 client
 	.connect()
 	.then(() => {
-		console.log('connected');
+		console.log('Our client has connected');
 	})
 	.catch(err => {
-		console.log('could not connect', err);
+		console.log('Could not connect', err);
 	});
 
-client.on('_open', function() {
-	console.log(`Client connected. readyState=${client.readyState}`);
+client.on('_connecting_error', function() {
+	console.log('connecting error!!!');
+});
+
+client.on('_closing', function() {
+	console.log('closing...');
+});
+
+client.on('_closed', function() {
+	console.log('closed');
+});
+
+client.on('_connected', function() {
+	console.log(`Client connected`);
 	console.log('Sending message to server');
 	client
 		.send('asd', {foo: 'bar'})
@@ -25,12 +37,9 @@ client.on('_open', function() {
 		})
 });
 
-client.on('_close', function(code, message) {
-	console.log(`Connection closed. readyState=${client.readyState}`, code, message);
-});
 
-client.on('_error', function(err) {
-	console.log(`Connection error occured. readyState=${client.readyState}`, err);
+client.on('_connecting', function() {
+	console.log('connecting...');
 });
 
 
@@ -43,6 +52,7 @@ setTimeout(() => {
 		.disconnect()
 		.then(() => {
 			console.log('disconnected');
+			return client.connect();
 		})
 		.catch(err => {
 			console.log('could not disconnected', err);
