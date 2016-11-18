@@ -145,7 +145,7 @@ class WebClient extends EventEmitter {
 
 
 	onError(err) {
-		const eventName = this.state == WebClient.States.CONENCTING ?
+		const eventName = this.state == WebClient.States.CONNECTING ?
 				WebClient.Events.CONNECTING_ERROR : WebClient.Events.ERROR;
 
 		this.state = WebClient.States.CLOSED;
