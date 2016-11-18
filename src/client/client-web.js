@@ -235,6 +235,9 @@ class WebClient extends EventEmitter {
 			.then(_ => {
 				return new Promise((resolve, reject) => {
 					const timeout = setTimeout(_ => {
+						/* Connections has been closed. */
+						if (!this.promiseCallbacks[messageId]) return;
+
 						const {reject, timeout} = this.promiseCallbacks_[messageId];
 						clearTimeout(timeout);
 						reject(new Error('Timeout reached'));
