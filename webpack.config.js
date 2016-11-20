@@ -16,11 +16,11 @@ module.exports = [
 		target: 'node',
 		externals: [nodeExternal],
 		module: {
-			loaders: [
+			rules: [
 				{
 					test: /\.js$/,
 					exclude: /(node_modules)/,
-					loaders: ['babel']
+					loaders: ['babel-loader']
 				}
 			]
 		},
@@ -37,11 +37,11 @@ module.exports = [
 		target: 'node',
 		externals: [nodeExternal],
 		module: {
-			loaders: [
+			rules: [
 				{
 					test: /\.js$/,
 					exclude: /(node_modules)/,
-					loaders: ['babel']
+					loaders: ['babel-loader']
 				}
 			]
 		},
@@ -56,11 +56,11 @@ module.exports = [
 			libraryTarget: 'commonjs2'
 		},
 		module: {
-			loaders: [
+			rules: [
 				{
 					test: /\.js$/,
 					exclude: /(node_modules)/,
-					loaders: ['babel']
+					loaders: ['babel-loader']
 				}
 			]
 		},
@@ -76,11 +76,11 @@ module.exports = [
             libraryTarget: 'var'
 		},
 		module: {
-			loaders: [
+			rules: [
 				{
 					test: /\.js$/,
 					exclude: /(node_modules)/,
-					loaders: ['babel']
+					loaders: ['babel-loader']
 				}
 			]
 		},

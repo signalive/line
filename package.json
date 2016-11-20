@@ -36,7 +36,7 @@
     "mocha": "3.1.2",
     "sinon": "1.17.6",
     "sinon-chai": "2.8.0",
-    "webpack": "1.13.3",
+    "webpack": "v2.1.0-beta.27",
     "webpack-node-externals": "1.5.4"
   }
 }
