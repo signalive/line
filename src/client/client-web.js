@@ -1,6 +1,7 @@
 import Message from '../lib/message';
 import Utils from '../lib/utils';
 import EventEmitter from 'event-emitter-extra';
+import Deferred from '../lib/deferred';
 
 
 class WebClient extends EventEmitter {
@@ -21,9 +22,9 @@ class WebClient extends EventEmitter {
 		this.initialReconnectDelay = 1;
 		this.reconnectIncrementFactor = 2;
 
-		this.promiseCallbacks_ = {};
-		this.connectPromiseCallback_ = {};
-		this.disconnectPromiseCallback_ = {};
+		this.deferreds_ = {};
+		this.connectDeferred_ = null;
+		this.disconnectDeferred_ = null;
 
 		this.state = WebClient.States.READY;
 	}
@@ -39,16 +40,19 @@ class WebClient extends EventEmitter {
 				return Promise.reject(new Error('Terminating an active connecting, try again later.'));
 			case WebClient.States.CLOSED:
 			case WebClient.States.READY:
-				return new Promise((resolve, reject) => {
-					this.state = WebClient.States.CONNECTING;
-					this.emit(WebClient.Events.CONNECTING);
-					this.connectPromiseCallback_ = {resolve, reject};
+				this.connectDeferred_ = new Deferred({
+					handler: () => {
+						this.state = WebClient.States.CONNECTING;
+						this.emit(WebClient.Events.CONNECTING);
 
-					setTimeout(_ => {
-						this.ws_ = new WebSocket(this.url);
-						this.bindEvents_();
-					}, 0);
+						setTimeout(_ => {
+							this.ws_ = new WebSocket(this.url);
+							this.bindEvents_();
+						}, 0);
+					}
 				});
+
+				return this.connectDeferred_;
 			default:
 				return Promise.reject(new Error('Could not connect, unknown state.'))
 		}
@@ -60,11 +64,13 @@ class WebClient extends EventEmitter {
 			case WebClient.States.ERROR:
 			case WebClient.States.CONNECTED:
 			case WebClient.States.CONNECTING:
-				return new Promise((resolve, reject) => {
-					this.ws_.close(code, reason);
-					this.state = WebClient.States.CLOSING;
-					this.disconnectPromiseCallback_ = {resolve, reject};
+				const deferred = this.disconnectDeferred_ = new Deferred({
+					handler: () => {
+						this.ws_.close(code, reason);
+						this.state = WebClient.States.CLOSING;
+					}
 				});
+				return deferred;
 			case WebClient.States.CLOSED:
 				return Promise.reject(new Error('There is no connection to disconnect.'));
 			case WebClient.States.CLOSING:
@@ -91,14 +97,14 @@ class WebClient extends EventEmitter {
 
 
 	disposeConnectionPromisses_() {
-		if (this.connectPromiseCallback_.reject) {
-			this.connectPromiseCallback_.reject();
-			this.connectPromiseCallback_ = {};
+		if (this.connectDeferred_) {
+			this.connectDeferred_.reject();
+			this.connectDeferred_ = null;
 		}
 
-		if (this.disconnectPromiseCallback_.resolve) {
-			this.disconnectPromiseCallback_.resolve();
-			this.disconnectPromiseCallback_ = {};
+		if (this.disconnectDeferred_) {
+			this.disconnectDeferred_.reject();
+			this.disconnectDeferred_ = null;
 		}
 	}
 
@@ -114,9 +120,9 @@ class WebClient extends EventEmitter {
 				this.initialReconnectDelay = data.initialReconnectDelay;
 				this.reconnectIncrementFactor = data.reconnectIncrementFactor;
 
-				if (this.connectPromiseCallback_.resolve) {
-					this.connectPromiseCallback_.resolve();
-					this.connectPromiseCallback_ = {};
+				if (this.connectDeferred_) {
+					this.connectDeferred_.resolve();
+					this.connectDeferred_ = null;
 				}
 
 				this.state = WebClient.States.CONNECTED;
@@ -140,14 +146,14 @@ class WebClient extends EventEmitter {
 
 		this.emit(WebClient.Events.CLOSED, e.code, e.reason);
 
-		if (this.connectPromiseCallback_.reject) {
-			this.connectPromiseCallback_.reject();
-			this.connectPromiseCallback_ = {};
+		if (this.connectDeferred_) {
+			this.connectDeferred_.reject();
+			this.connectDeferred_ = null;
 		}
 
-		if (this.disconnectPromiseCallback_.resolve) {
-			this.disconnectPromiseCallback_.resolve();
-			this.disconnectPromiseCallback_ = {};
+		if (this.disconnectDeferred_) {
+			this.disconnectDeferred_.resolve();
+			this.disconnectDeferred_ = null;
 		}
 
 		if (!this.reconnect || this.retrying_) return;
@@ -174,16 +180,7 @@ class WebClient extends EventEmitter {
 		this.state = WebClient.States.CLOSED;
 
 		this.emit(eventName, err);
-
-		if (this.connectPromiseCallback_.reject) {
-			this.connectPromiseCallback_.reject();
-			this.connectPromiseCallback_ = {};
-		}
-
-		if (this.disconnectPromiseCallback_.reject) {
-			this.disconnectPromiseCallback_.reject();
-			this.disconnectPromiseCallback_ = {};
-		}
+		this.disposeConnectionPromisses_();
 	}
 
 
@@ -195,18 +192,17 @@ class WebClient extends EventEmitter {
 			return this.emit(message.name, message);
 
 		// Message response
-		if (message.name == '_r' && this.promiseCallbacks_[message.id]) {
-			const {resolve, reject, timeout} = this.promiseCallbacks_[message.id];
-			clearTimeout(timeout);
+		if (message.name == '_r' && this.deferreds_[message.id]) {
+			const deferred = this.deferreds_[message.id];
 
 			if (message.err) {
 				const err = _.assign(new Error(), message.err);
-				reject(err);
+				deferred.reject(err);
 			} else {
-				resolve(message.payload);
+				deferred.resolve(message.payload);
 			}
 
-			delete this.promiseCallbacks_[message.id];
+			delete this.deferreds_[message.id];
 			return;
 		}
 
@@ -229,23 +225,19 @@ class WebClient extends EventEmitter {
 
 	send(eventName, payload) {
 		const message = new Message({name: eventName, payload});
-		const messageId = message.setId();
+		message.setId();
+
 		return this
 			.send_(message)
 			.then(_ => {
-				return new Promise((resolve, reject) => {
-					const timeout = setTimeout(_ => {
-						/* Connections has been closed. */
-						if (!this.promiseCallbacks_[messageId]) return;
-
-						const {reject, timeout} = this.promiseCallbacks_[messageId];
-						clearTimeout(timeout);
-						reject(new Error('Timeout reached'));
-						delete this.promiseCallbacks_[messageId];
-					}, this.serverTimeout_);
-
-					this.promiseCallbacks_[messageId] = {resolve, reject, timeout};
+				const deferred = this.deferreds_[message.id] = new Deferred({
+					onExpire: () => {
+						delete this.deferreds_[message.id];
+					},
+					timeout: this.serverTimeout_
 				});
+
+				return deferred;
 			});
 	}
 

@@ -4,6 +4,7 @@ import EventEmitter from 'event-emitter-extra';
 import assign from 'lodash/assign';
 import forEach from 'lodash/forEach';
 import isObject from 'lodash/isObject';
+import Deferred from '../lib/deferred';
 import * as uuid from 'node-uuid';
 
 
@@ -16,7 +17,7 @@ class Connection extends EventEmitter {
 		this.socket = socket;
 		this.server = server;
 
-		this.promiseCallbacks = {};
+		this.deferreds_ = {};
 		this.socket.on('message', this.onMessage.bind(this));
 		this.socket.on('error', this.onError.bind(this));
 		this.socket.on('close', this.onClose.bind(this));
@@ -60,18 +61,17 @@ class Connection extends EventEmitter {
 		}
 
 		// Message response
-		if (message.name == '_r' && this.promiseCallbacks[message.id]) {
-			const {resolve, reject, timeout} = this.promiseCallbacks[message.id];
-			clearTimeout(timeout);
+		if (message.name == '_r' && this.deferreds_[message.id]) {
+			const deferred = this.deferreds_[message.id];
 
 			if (message.err) {
 				const err = assign(new Error(), message.err);
-				reject(err);
+				deferred.reject(err);
 			} else {
-				resolve(message.payload);
+				deferred.resolve(message.payload);
 			}
 
-			delete this.promiseCallbacks[message.id];
+			delete this.deferreds_[message.id];
 			return;
 		}
 
@@ -98,10 +98,10 @@ class Connection extends EventEmitter {
 	onClose(code, message) {
 		this.server.rooms.removeFromAll(this);
 
-		forEach(this.promiseCallbacks, (callbacks) => {
-			callbacks.reject(new Error('Socket connection closed!'));
+		forEach(this.deferreds_, (deferred) => {
+			deferred.reject(new Error('Socket connection closed!'));
 		});
-		this.promiseCallbacks = {};
+		this.deferreds_ = {};
 
 		this.emit('_close', code, message);
 	}
@@ -121,23 +121,19 @@ class Connection extends EventEmitter {
 
 	send(eventName, payload) {
 		const message = new Message({name: eventName, payload});
-		const messageId = message.setId();
+		message.setId();
+
 		return this
 			.send_(message)
 			.then(_ => {
-				return new Promise((resolve, reject) => {
-					const timeout = setTimeout(_ => {
-						/* Connections has been closed. */
-						if (!this.promiseCallbacks[messageId]) return;
-
-						const {reject, timeout} = this.promiseCallbacks[messageId];
-						clearTimeout(timeout);
-						reject(new Error('Timeout reached'));
-						delete this.promiseCallbacks[messageId];
-					}, this.server.options.timeout);
-
-					this.promiseCallbacks[messageId] = {resolve, reject, timeout};
+				const deferred = this.deferreds_[message.id] = new Deferred({
+					onExpire: () => {
+						delete this.deferreds_[message.id];
+					},
+					timeout: this.server.options.timeout
 				});
+
+				return deferred;
 			});
 	}
 
