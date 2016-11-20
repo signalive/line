@@ -40,13 +40,13 @@ class WebClient extends EventEmitter {
 			case WebClient.States.CLOSED:
 			case WebClient.States.READY:
 				return new Promise((resolve, reject) => {
+					this.state = WebClient.States.CONNECTING;
+					this.emit(WebClient.Events.CONNECTING);
+					this.connectPromiseCallback_ = {resolve, reject};
+
 					setTimeout(_ => {
 						this.ws_ = new WebSocket(this.url);
-						this.connectPromiseCallback_ = {resolve, reject};
 						this.bindEvents_();
-
-						this.state = WebClient.States.CONNECTING;
-						this.emit(WebClient.Events.CONNECTING);
 					}, 0);
 				});
 			default:
@@ -106,6 +106,29 @@ class WebClient extends EventEmitter {
 	onOpen() {
 		// this.updateState_();
 		// this.emit('_open');
+		Utils.retry(_ => this.send('_h'), {maxCount: 3, initialDelay: 1, increaseFactor: 1})
+			.then(data => {
+				this.id = data.id;
+				this.serverTimeout_ = data.timeout;
+				this.maxReconnectDelay = data.maxReconnectDelay;
+				this.initialReconnectDelay = data.initialReconnectDelay;
+				this.reconnectIncrementFactor = data.reconnectIncrementFactor;
+
+				if (this.connectPromiseCallback_.resolve) {
+					this.connectPromiseCallback_.resolve();
+					this.connectPromiseCallback_ = {};
+				}
+
+				this.state = WebClient.States.CONNECTED;
+				this.emit(WebClient.Events.CONNECTED);
+			})
+			.catch(err => {
+				console.log('Handshake failed', err);
+				return this.disconnect();
+			})
+			.catch(err => {
+				console.log('Could not disconnect after failed handshake', err);
+			});
 	}
 
 
@@ -170,32 +193,6 @@ class WebClient extends EventEmitter {
 		// Message without response (no id fields)
 		if (!message.id && Message.reservedNames.indexOf(message.name) == -1)
 			return this.emit(message.name, message);
-
-		// Handshake
-		if (message.name == '_h') {
-			this.id = message.payload.id;
-			this.serverTimeout_ = message.payload.timeout;
-			this.maxReconnectDelay = message.payload.maxReconnectDelay;
-			this.initialReconnectDelay = message.payload.initialReconnectDelay;
-			this.reconnectIncrementFactor = message.payload.reconnectIncrementFactor;
-
-			return this
-				.send_(message.createResponse())
-				.then(_ => {
-					message.dispose();
-				});
-		}
-
-		if (message.name == '_h2') {
-			if (this.connectPromiseCallback_.resolve) {
-				this.connectPromiseCallback_.resolve();
-				this.connectPromiseCallback_ = {};
-			}
-
-			this.state = WebClient.States.CONNECTED;
-			this.emit(WebClient.Events.CONNECTED);
-			return;
-		}
 
 		// Message response
 		if (message.name == '_r' && this.promiseCallbacks_[message.id]) {

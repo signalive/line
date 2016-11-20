@@ -22,35 +22,42 @@ class Connection extends EventEmitter {
 		this.socket.on('close', this.onClose.bind(this));
 
 		this.handshake_ = false;
-		Utils.retry(_ => this.send('_h',
-			{
-				id: this.id,
-				timeout: this.server.options.timeout,
-				maxReconnectDelay: this.server.options.maxReconnectDelay,
-				initialReconnectDelay: this.server.options.initialReconnectDelay,
-				reconnectIncrementFactor: this.server.options.reconnectIncrementFactor
-			}),
-			{maxCount: 3, initialDelay: 1, increaseFactor: 1})
-			.then(_ => this.sendWithoutResponse('_h2'))
-			.then(_ => {
-				this.joinRoom('/');
-				this.handshake_ = true;
-				this.emit('_handshakeOk');
-			})
-			.catch(err => {
-				this.handshake_ = false;
-				console.log(`Handshake failed for ${this.id}.`);
-				this.onClose(500, err);
-			});
 	}
 
 
 	onMessage(data, flags) {
 		const message = Message.parse(data);
+		// TODO: Emit original _message event with raw data?
 
 		// Message without response (no id fields)
 		if (!message.id && Message.reservedNames.indexOf(message.name) == -1)
 			return this.emit(message.name, message);
+
+		// Handshake
+		if (message.name == '_h') {
+			const responsePayload = {
+				id: this.id,
+				timeout: this.server.options.timeout,
+				maxReconnectDelay: this.server.options.maxReconnectDelay,
+				initialReconnectDelay: this.server.options.initialReconnectDelay,
+				reconnectIncrementFactor: this.server.options.reconnectIncrementFactor
+			};
+
+			Utils.retry(
+					_ => this.send_(message.createResponse(null, responsePayload)),
+					{maxCount: 3, initialDelay: 1, increaseFactor: 1}
+				)
+				.then(_ => {
+					this.joinRoom('/');
+					this.handshake_ = true;
+					this.emit('_handshakeOk');
+				})
+				.catch(err => {
+					this.handshake_ = false;
+					console.log(`Handshake failed for ${this.id}.`);
+					this.onClose(500, err);
+				});
+		}
 
 		// Message response
 		if (message.name == '_r' && this.promiseCallbacks[message.id]) {

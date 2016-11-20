@@ -86,4 +86,4 @@ export default class Message extends EventEmitter {
 	}
 }
 
-Message.reservedNames = ['_r', '_h', '_h2'];
+Message.reservedNames = ['_r', '_h'];
