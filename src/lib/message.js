@@ -1,4 +1,6 @@
 import isUndefined from 'lodash/isUndefined';
+import isObject from 'lodash/isObject';
+import isFunction from 'lodash/isFunction';
 import {generateDummyId} from './utils';
 import EventEmitter from 'event-emitter-extra/dist/commonjs.modern';
 
@@ -45,6 +47,21 @@ export default class Message extends EventEmitter {
 
 		if (this.isResponded_)
 			return console.warn('[line] This message has already been ended.');
+
+		// If thenable
+		if (isObject(payload) && isFunction(payload.then)) {
+			payload
+				.then(response => {
+					this.isResponded_ = true;
+					this.emit('resolved', payload);
+				})
+				.catch(err => {
+					this.isResponded_ = true;
+					this.emit('rejected', err);
+				});
+
+			return;
+		}
 
 		this.isResponded_ = true;
 		this.emit('resolved', payload);
