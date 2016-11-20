@@ -1,6 +1,6 @@
 import Utils from '../lib/utils';
 import Message from '../lib/message';
-import EventEmitter from 'event-emitter-extra';
+import EventEmitter from 'event-emitter-extra/dist/commonjs.modern';
 import assign from 'lodash/assign';
 import forEach from 'lodash/forEach';
 import isObject from 'lodash/isObject';

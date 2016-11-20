@@ -1,6 +1,6 @@
 import Message from '../lib/message';
 import Utils from '../lib/utils';
-import EventEmitter from 'event-emitter-extra';
+import EventEmitter from 'event-emitter-extra/dist/commonjs.modern';
 import Deferred from '../lib/deferred';
 
 

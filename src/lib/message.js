@@ -1,6 +1,6 @@
 import isUndefined from 'lodash/isUndefined';
 import * as uuid from 'node-uuid';
-import EventEmitter from 'event-emitter-extra';
+import EventEmitter from 'event-emitter-extra/dist/commonjs.modern';
 
 
 

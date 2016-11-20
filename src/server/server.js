@@ -1,7 +1,7 @@
 import {Server as WebSocketServer} from 'uws';
 import Connection from './connection';
 import Rooms from './rooms';
-import EventEmitter from 'event-emitter-extra';
+import EventEmitter from 'event-emitter-extra/dist/commonjs.modern';
 
 
 class Server extends EventEmitter {
