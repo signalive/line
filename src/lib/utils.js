@@ -31,4 +31,10 @@ function retry(task, options = {}) {
 }
 
 
-module.exports = {promiseDelay, retry};
+// http://stackoverflow.com/a/6248722
+function generateDummyId(length = 4) {
+	return ("0000" + (Math.random()*Math.pow(36,length) << 0).toString(36)).slice(-length);
+}
+
+
+module.exports = {promiseDelay, retry, generateDummyId};

@@ -1,5 +1,5 @@
 import isUndefined from 'lodash/isUndefined';
-import * as uuid from 'node-uuid';
+import {generateDummyId} from './utils';
 import EventEmitter from 'event-emitter-extra/dist/commonjs.modern';
 
 
@@ -30,7 +30,7 @@ export default class Message extends EventEmitter {
 		this.isResponded_ = false;
 	}
 
-	setId(id = uuid.v4()) {
+	setId(id = generateDummyId()) {
 		this.id = id;
 		return id;
 	}
