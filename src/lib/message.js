@@ -1,6 +1,7 @@
 import isUndefined from 'lodash/isUndefined';
 import isObject from 'lodash/isObject';
 import isFunction from 'lodash/isFunction';
+import values from 'lodash/values';
 import {generateDummyId} from './utils';
 import EventEmitter from 'event-emitter-extra/dist/commonjs.modern';
 
@@ -103,4 +104,11 @@ export default class Message extends EventEmitter {
 	}
 }
 
-Message.reservedNames = ['_r', '_h'];
+
+Message.Names = {
+	RESPONSE: '_r',
+	HANDSHAKE: '_h'
+};
+
+
+Message.ReservedNames = values(Message.Names);

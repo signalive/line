@@ -51,12 +51,24 @@ class Server extends EventEmitter {
 
 	bindEvents() {
 		this.server.on('connection', this.onConnection.bind(this));
+		this.server.on('headers', this.onHeaders.bind(this));
+		this.server.on('error', this.onError.bind(this));
 	}
 
 
 	onConnection(socket) {
 		const connection = new Connection(socket, this);
-		connection.on('_handshakeOk', () => this.emit('connection', connection));
+		connection.on(Connection.Events.HANDSHAKE_OK, () => this.emit(Server.Events.CONNECTION, connection));
+	}
+
+
+	onHeaders(headers) {
+		this.emit(Server.Events.HEADERS, headers);
+	}
+
+
+	onError(err) {
+		this.emit(Server.Events.ERROR, err);
 	}
 
 
@@ -69,5 +81,13 @@ class Server extends EventEmitter {
 		return this.rooms.getRoom('/').broadcast(eventName, payload);
 	}
 }
+
+
+Server.Events = {
+	CONNECTION: 'connection',
+	HEADERS: 'headers',
+	ERROR: 'error'
+};
+
 
 module.exports = Server;

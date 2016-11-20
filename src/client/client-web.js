@@ -112,7 +112,7 @@ class WebClient extends EventEmitter {
 	onOpen() {
 		// this.updateState_();
 		// this.emit('_open');
-		Utils.retry(_ => this.send('_h'), {maxCount: 3, initialDelay: 1, increaseFactor: 1})
+		Utils.retry(_ => this.send(Message.Names.HANDSHAKE), {maxCount: 3, initialDelay: 1, increaseFactor: 1})
 			.then(data => {
 				this.id = data.id;
 				this.serverTimeout_ = data.timeout;
@@ -188,11 +188,11 @@ class WebClient extends EventEmitter {
 		const message = Message.parse(e.data);
 
 		// Message without response (no id fields)
-		if (!message.id && Message.reservedNames.indexOf(message.name) == -1)
+		if (!message.id && Message.ReservedNames.indexOf(message.name) == -1)
 			return this.emit(message.name, message);
 
 		// Message response
-		if (message.name == '_r' && this.deferreds_[message.id]) {
+		if (message.name == Message.Names.RESPONSE && this.deferreds_[message.id]) {
 			const deferred = this.deferreds_[message.id];
 
 			if (message.err) {

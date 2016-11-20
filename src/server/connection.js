@@ -28,10 +28,12 @@ class Connection extends EventEmitter {
 
 	onMessage(data, flags) {
 		const message = Message.parse(data);
-		// TODO: Emit original _message event with raw data?
+
+		// Emit original _message event with raw data
+		this.emit(Connection.Events.MESSAGE, data);
 
 		// Message without response (no id fields)
-		if (!message.id && Message.reservedNames.indexOf(message.name) == -1)
+		if (!message.id && Message.ReservedNames.indexOf(message.name) == -1)
 			return this.emit(message.name, message);
 
 		// Handshake
@@ -51,7 +53,7 @@ class Connection extends EventEmitter {
 				.then(_ => {
 					this.joinRoom('/');
 					this.handshake_ = true;
-					this.emit('_handshakeOk');
+					this.emit(Connection.Events.HANDSHAKE_OK);
 				})
 				.catch(err => {
 					this.handshake_ = false;
@@ -91,8 +93,8 @@ class Connection extends EventEmitter {
 		this.emit(message.name, message);
 	}
 
-	onError(error) {
-		this.emit('_error', error);
+	onError(err) {
+		this.emit(Connection.Events.ERROR, err);
 	}
 
 	onClose(code, message) {
@@ -103,7 +105,7 @@ class Connection extends EventEmitter {
 		});
 		this.deferreds_ = {};
 
-		this.emit('_close', code, message);
+		this.emit(Connection.Events.CLOSE, code, message);
 	}
 
 	joinRoom(roomName) {
@@ -151,5 +153,14 @@ class Connection extends EventEmitter {
 		});
 	}
 }
+
+
+Connection.Events = {
+	MESSAGE: '_message',
+	HANDSHAKE_OK: '_handshakeOk',
+	ERROR: '_error',
+	CLOSE: '_close'
+};
+
 
 module.exports = Connection;
