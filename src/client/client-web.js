@@ -250,8 +250,8 @@ class WebClient extends EventEmitter {
 
 
 	onPing_(message) {
-		Utils
-			.retry(_ => this.send_(message.createResponse(null, 'pong')), {maxCount: 3, initialDelay: 1, increaseFactor: 1})
+		this
+			.send_(message.createResponse(null, 'pong'))
 			.catch(err => {
 				console.log('Ping responce failed to send', err);
 			});
