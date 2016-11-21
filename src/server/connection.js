@@ -4,6 +4,7 @@ import EventEmitter from 'event-emitter-extra/dist/commonjs.modern';
 import assign from 'lodash/assign';
 import forEach from 'lodash/forEach';
 import isObject from 'lodash/isObject';
+import debounce from 'lodash/debounce';
 import Deferred from '../lib/deferred';
 import * as uuid from 'node-uuid';
 
@@ -18,14 +19,34 @@ class Connection extends EventEmitter {
 		this.server = server;
 
 		this.deferreds_ = {};
+		this.state = Connection.States.OPEN;
+
 		this.socket.on('message', this.onMessage_.bind(this));
 		this.socket.on('error', this.onError_.bind(this));
 		this.socket.on('close', this.onClose_.bind(this));
+
+		this.autoPing_ = server.options.pingInterval > 0 ?
+			debounce(() => {
+				if (this.state != Connection.States.OPEN)
+					return;
+
+				this
+					.ping()
+					.then(() => {
+						if (server.options.pingInterval > 0 && this.state == Connection.States.OPEN) {
+							this.autoPing_();
+						}
+					})
+					.catch(() => {});
+			}, server.options.pingInterval) :
+			() => {};
 	}
 
 
 	onMessage_(data, flags) {
 		const message = Message.parse(data);
+
+		this.autoPing_();
 
 		// Emit original _message event with raw data
 		this.emit(Connection.Events.MESSAGE, data);
@@ -130,8 +151,8 @@ class Connection extends EventEmitter {
 
 
 	onPing_(message) {
-		Utils
-			.retry(_ => this.send_(message.createResponse(null, 'pong')), {maxCount: 3, initialDelay: 1, increaseFactor: 1})
+		this
+			.send_(message.createResponse(null, 'pong'))
 			.catch(err => {
 				console.log('Ping responce failed to send', err);
 			});
@@ -144,6 +165,9 @@ class Connection extends EventEmitter {
 
 
 	onClose_(code, message) {
+		if (this.state == Connection.States.CLOSE)
+			return;
+
 		this.server.rooms.removeFromAll(this);
 
 		forEach(this.deferreds_, (deferred) => {
@@ -151,6 +175,7 @@ class Connection extends EventEmitter {
 		});
 		this.deferreds_ = {};
 
+		this.state = Connection.States.CLOSE;
 		this.emit(Connection.Events.CLOSE, code, message);
 	}
 
@@ -203,7 +228,23 @@ class Connection extends EventEmitter {
 			});
 		});
 	}
+
+
+	ping() {
+		return Utils
+			.retry(_ => this.send(Message.Names.PING), {maxCount: 3, initialDelay: 1, increaseFactor: 1})
+			.catch(err => {
+				this.onClose_(410, new Error('Ping failed, dead connection'));
+				throw err;
+			});
+	}
 }
+
+
+Connection.States = {
+	OPEN: 'open',
+	CLOSE: 'close'
+};
 
 
 Connection.Events = {

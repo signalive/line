@@ -14,7 +14,8 @@ class Server extends EventEmitter {
 			timeout: 30000,
 			maxReconnectDelay: 60,
 			initialReconnectDelay: 1,
-			reconnectIncrementFactor: 1
+			reconnectIncrementFactor: 1,
+			pingInterval: 60000
 		}, options || {});
 	}
 
