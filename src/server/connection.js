@@ -103,7 +103,7 @@ class Connection extends EventEmitter {
 		});
 
 		// Sorry for party rocking
-		const handshakeResponse = this.server.emit('handshake', message);
+		const handshakeResponse = this.server.emit('handshake', this, message);
 
 		if (!handshakeResponse)
 			message.resolve();
@@ -194,7 +194,7 @@ class Connection extends EventEmitter {
 
 Connection.Events = {
 	MESSAGE: '_message',
-	HANDSHAKE_OK: '_handshakeOk',
+	HANDSHAKE_OK: '_handshakeOk', // Private
 	ERROR: '_error',
 	CLOSE: '_close'
 };

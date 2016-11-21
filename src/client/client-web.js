@@ -112,7 +112,7 @@ class WebClient extends EventEmitter {
 	onOpen() {
 		// this.updateState_();
 		// this.emit('_open');
-		Utils.retry(_ => this.send(Message.Names.HANDSHAKE), {maxCount: 3, initialDelay: 1, increaseFactor: 1})
+		Utils.retry(_ => this.send(Message.Names.HANDSHAKE, this.options.handshakePayload), {maxCount: 3, initialDelay: 1, increaseFactor: 1})
 			.then(data => {
 				this.id = data.id;
 				this.serverTimeout_ = data.timeout;
@@ -121,12 +121,12 @@ class WebClient extends EventEmitter {
 				this.reconnectIncrementFactor = data.reconnectIncrementFactor;
 
 				if (this.connectDeferred_) {
-					this.connectDeferred_.resolve();
+					this.connectDeferred_.resolve(data.handshakePayload);
 					this.connectDeferred_ = null;
 				}
 
 				this.state = WebClient.States.CONNECTED;
-				this.emit(WebClient.Events.CONNECTED);
+				this.emit(WebClient.Events.CONNECTED, data.handshakePayload);
 			})
 			.catch(err => {
 				console.log('Handshake failed', err);
