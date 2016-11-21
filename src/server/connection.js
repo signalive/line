@@ -95,7 +95,8 @@ class Connection extends EventEmitter {
 				timeout: this.server.options.timeout,
 				maxReconnectDelay: this.server.options.maxReconnectDelay,
 				initialReconnectDelay: this.server.options.initialReconnectDelay,
-				reconnectIncrementFactor: this.server.options.reconnectIncrementFactor
+				reconnectIncrementFactor: this.server.options.reconnectIncrementFactor,
+				pingInterval: this.server.options.pingInterval
 			};
 
 			this

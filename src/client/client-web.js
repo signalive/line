@@ -2,6 +2,7 @@ import Message from '../lib/message';
 import Utils from '../lib/utils';
 import EventEmitter from 'event-emitter-extra/dist/commonjs.modern';
 import Deferred from '../lib/deferred';
+import debounce from 'lodash/debounce';
 
 
 class WebClient extends EventEmitter {
@@ -21,12 +22,29 @@ class WebClient extends EventEmitter {
 		this.maxReconnectDelay = 60;
 		this.initialReconnectDelay = 1;
 		this.reconnectIncrementFactor = 2;
+		this.pingInterval = 60000;
 
 		this.deferreds_ = {};
 		this.connectDeferred_ = null;
 		this.disconnectDeferred_ = null;
 
 		this.state = WebClient.States.READY;
+
+		this.autoPing_ = this.pingInterval > 0 ?
+			debounce(() => {
+				if (this.state != WebClient.States.CONNECTED)
+					return;
+
+				this
+					.ping()
+					.then(() => {
+						if (this.pingInterval > 0 && this.state == WebClient.States.CONNECTED) {
+							this.autoPing_();
+						}
+					})
+					.catch(() => {});
+			}, this.pingInterval) :
+			() => {};
 	}
 
 
@@ -119,6 +137,7 @@ class WebClient extends EventEmitter {
 				this.maxReconnectDelay = data.maxReconnectDelay;
 				this.initialReconnectDelay = data.initialReconnectDelay;
 				this.reconnectIncrementFactor = data.reconnectIncrementFactor;
+				this.pingInterval = data.pingInterval;
 
 				if (this.connectDeferred_) {
 					this.connectDeferred_.resolve(data.handshakePayload);
@@ -186,6 +205,8 @@ class WebClient extends EventEmitter {
 
 	onMessage(e) {
 		const message = Message.parse(e.data);
+
+		this.autoPing_();
 
 		// Message without response (no id fields)
 		if (!message.id && Message.ReservedNames.indexOf(message.name) == -1)
@@ -267,6 +288,16 @@ class WebClient extends EventEmitter {
 			this.ws_.send(message.toString());
 			resolve();
 		});
+	}
+
+
+	ping() {
+		return Utils
+			.retry(_ => this.send(Message.Names.PING), {maxCount: 3, initialDelay: 1, increaseFactor: 1})
+			.catch(err => {
+				this.disconnect();
+				throw err;
+			});
 	}
 }
 
