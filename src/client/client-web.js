@@ -17,6 +17,7 @@ class WebClient extends EventEmitter {
 		this.id = null;
 		this.readyState = null;
 		this.reconnect = options.reconnect;
+		this.reconnectDisabled_ = false;
 
 		this.serverTimeout_ = 30000;
 		this.maxReconnectDelay = 60;
@@ -62,6 +63,7 @@ class WebClient extends EventEmitter {
 					handler: () => {
 						this.state = WebClient.States.CONNECTING;
 						this.emit(WebClient.Events.CONNECTING);
+						this.reconnectDisabled_ = false;
 
 						setTimeout(_ => {
 							this.ws_ = new WebSocket(this.url);
@@ -82,6 +84,7 @@ class WebClient extends EventEmitter {
 			case WebClient.States.ERROR:
 			case WebClient.States.CONNECTED:
 			case WebClient.States.CONNECTING:
+				this.reconnectDisabled_ = true;
 				const deferred = this.disconnectDeferred_ = new Deferred({
 					handler: () => {
 						this.ws_.close(code, reason);
@@ -175,7 +178,7 @@ class WebClient extends EventEmitter {
 			this.disconnectDeferred_ = null;
 		}
 
-		if (!this.reconnect || this.retrying_) return;
+		if (!this.reconnect || this.retrying_ || this.reconnectDisabled_) return;
 
 		this.retrying_ = true;
 		Utils
