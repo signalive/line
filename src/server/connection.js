@@ -161,6 +161,7 @@ class Connection extends EventEmitter {
 
 	onError_(err) {
 		this.emit(Connection.Events.ERROR, err);
+		this.onClose_(500, err);
 	}
 
 
