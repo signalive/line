@@ -85,6 +85,7 @@ class Server extends EventEmitter {
 
 Server.Events = {
 	CONNECTION: 'connection',
+	HANDSHAKE: 'handshake',
 	HEADERS: 'headers',
 	ERROR: 'error'
 };

@@ -21,8 +21,6 @@ class Connection extends EventEmitter {
 		this.socket.on('message', this.onMessage.bind(this));
 		this.socket.on('error', this.onError.bind(this));
 		this.socket.on('close', this.onClose.bind(this));
-
-		this.handshake_ = false;
 	}
 
 
@@ -38,28 +36,7 @@ class Connection extends EventEmitter {
 
 		// Handshake
 		if (message.name == '_h') {
-			const responsePayload = {
-				id: this.id,
-				timeout: this.server.options.timeout,
-				maxReconnectDelay: this.server.options.maxReconnectDelay,
-				initialReconnectDelay: this.server.options.initialReconnectDelay,
-				reconnectIncrementFactor: this.server.options.reconnectIncrementFactor
-			};
-
-			Utils.retry(
-					_ => this.send_(message.createResponse(null, responsePayload)),
-					{maxCount: 3, initialDelay: 1, increaseFactor: 1}
-				)
-				.then(_ => {
-					this.joinRoom('/');
-					this.handshake_ = true;
-					this.emit(Connection.Events.HANDSHAKE_OK);
-				})
-				.catch(err => {
-					this.handshake_ = false;
-					console.log(`Handshake failed for ${this.id}.`);
-					this.onClose(500, err);
-				});
+			return this.onHandshake_(message);
 		}
 
 		// Message response
@@ -92,6 +69,56 @@ class Connection extends EventEmitter {
 
 		this.emit(message.name, message);
 	}
+
+
+	onHandshake_(message) {
+		message.once('resolved', payload => {
+			const responsePayload = {
+				handshakePayload: payload,
+				id: this.id,
+				timeout: this.server.options.timeout,
+				maxReconnectDelay: this.server.options.maxReconnectDelay,
+				initialReconnectDelay: this.server.options.initialReconnectDelay,
+				reconnectIncrementFactor: this.server.options.reconnectIncrementFactor
+			};
+
+			this
+				.send_(message.createResponse(null, responsePayload))
+				.then(() => {
+					this.joinRoom('/');
+					this.emit(Connection.Events.HANDSHAKE_OK);
+				})
+				.catch(() => {
+					console.log(`Handshake resolve response failed to send for ${this.id}.`);
+					this.onClose(500, err);
+				})
+				.then(() => {
+					message.dispose();
+				});
+		});
+
+		message.once('rejected', err => {
+	        if (isObject(err) && err instanceof Error && err.name == 'Error')
+	           err = {message: err.message, name: 'Error'};
+
+			this
+				.send_(message.createResponse(null, err))
+				.catch(err_ => {
+					console.log(`Handshake reject response failed to send for ${this.id}.`);
+				})
+				.then(() => {
+					this.onClose(500, err);
+					message.dispose();
+				});
+		});
+
+		// Sorry for party rocking
+		const handshakeResponse = this.server.emit('handshake', message);
+
+		if (!handshakeResponse)
+			message.resolve();
+	}
+
 
 	onError(err) {
 		this.emit(Connection.Events.ERROR, err);
