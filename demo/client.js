@@ -1,4 +1,7 @@
-const client = new LineClient('ws://localhost:3000', {reconnect: true});
+const client = new LineClient('ws://localhost:3000', {
+	reconnect: true,
+	handshakePayload: {hello: 'shake'}
+});
 
 client
 	.connect()

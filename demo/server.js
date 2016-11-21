@@ -1,8 +1,12 @@
 const Server = require('../dist/server');
 
-const server = new Server({port: 3000, verifyClient: function(info, callback) {
-	callback(true);
-}});
+const server = new Server({port: 3000});
+
+server.on('handshake', (connection, handshake) => {
+	console.log(handshake.payload);
+	handshake.resolve();
+	// handshake.reject(new Error('Sorry bro'));
+});
 
 server
 	.start()
