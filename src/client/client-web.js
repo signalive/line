@@ -222,7 +222,7 @@ class WebClient extends EventEmitter {
 			const deferred = this.deferreds_[message.id];
 
 			if (message.err) {
-				const err = _.assign(new Error(), message.err);
+				const err = Object.assign(new Error(), message.err);
 				deferred.reject(err);
 			} else {
 				deferred.resolve(message.payload);
