@@ -25,7 +25,7 @@ import EventEmitterExtra from 'event-emitter-extra/dist/commonjs.modern';
  * @param {number=} options.reconnectIncrementFactor Reconnection incremental factor for clients. Default: 2
  * @param {number=} options.pingInterval Ping interval (in ms) for both server and client. Default: 60 seconds.
  * @example
- * const Server = require('line/server');
+ * const Server = require('line-socket/server');
  * const server = new Server({
  *     port: 8080
  * });
