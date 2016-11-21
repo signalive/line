@@ -191,6 +191,11 @@ class WebClient extends EventEmitter {
 		if (!message.id && Message.ReservedNames.indexOf(message.name) == -1)
 			return this.emit(message.name, message);
 
+		// Ping
+		if (message.name == Message.Names.PING) {
+			return this.onPing_(message);
+		}
+
 		// Message response
 		if (message.name == Message.Names.RESPONSE && this.deferreds_[message.id]) {
 			const deferred = this.deferreds_[message.id];
@@ -220,6 +225,15 @@ class WebClient extends EventEmitter {
 		});
 
 		this.emit(message.name, message);
+	}
+
+
+	onPing_(message) {
+		Utils
+			.retry(_ => this.send_(message.createResponse(null, 'pong')), {maxCount: 3, initialDelay: 1, increaseFactor: 1})
+			.catch(err => {
+				console.log('Ping responce failed to send', err);
+			});
 	}
 
 
