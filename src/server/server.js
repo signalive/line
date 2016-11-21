@@ -164,10 +164,10 @@ class Server extends EventEmitterExtra {
 /**
  * `Server` is an [full-fledged event emitter](https://github.com/signalive/event-emitter-extra).
  *
- * @param {'connection'} Server.Events.CONNECTION
- * @param {'handshake'} Server.Events.HANDSHAKE
- * @param {'headers'} Server.Events.HEADERS
- * @param {'error'} Server.Events.ERROR
+ * @property {'connection'} Server.Events.CONNECTION
+ * @property {'handshake'} Server.Events.HANDSHAKE
+ * @property {'headers'} Server.Events.HEADERS
+ * @property {'error'} Server.Events.ERROR
  * @example
  * // On a client connects after successful handshake
  * server.on('connection', (connection) => {

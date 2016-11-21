@@ -1,6 +1,6 @@
 import Utils from '../lib/utils';
 import Message from '../lib/message';
-import EventEmitter from 'event-emitter-extra/dist/commonjs.modern';
+import EventEmitterExtra from 'event-emitter-extra/dist/commonjs.modern';
 import assign from 'lodash/assign';
 import forEach from 'lodash/forEach';
 import isObject from 'lodash/isObject';
@@ -9,7 +9,15 @@ import Deferred from '../lib/deferred';
 import * as uuid from 'node-uuid';
 
 
-class Connection extends EventEmitter {
+/**
+ * Server connection class
+ *
+ * @class ServerConnection
+ * @extends {EventEmitterExtra}
+ * @property {string} id Unique UUID of the connection.
+ * @property {ServerConnection.States} state Connection state.
+ */
+class ServerConnection extends EventEmitterExtra {
     constructor(socket, server) {
         super();
 
@@ -19,7 +27,7 @@ class Connection extends EventEmitter {
         this.server = server;
 
         this.deferreds_ = {};
-        this.state = Connection.States.OPEN;
+        this.state = ServerConnection.States.OPEN;
 
         this.socket.on('message', this.onMessage_.bind(this));
         this.socket.on('error', this.onError_.bind(this));
@@ -27,13 +35,13 @@ class Connection extends EventEmitter {
 
         this.autoPing_ = server.options.pingInterval > 0 ?
             debounce(() => {
-                if (this.state != Connection.States.OPEN)
+                if (this.state != ServerConnection.States.OPEN)
                     return;
 
                 this
                     .ping()
                     .then(() => {
-                        if (server.options.pingInterval > 0 && this.state == Connection.States.OPEN) {
+                        if (server.options.pingInterval > 0 && this.state == ServerConnection.States.OPEN) {
                             this.autoPing_();
                         }
                     })
@@ -49,7 +57,7 @@ class Connection extends EventEmitter {
         this.autoPing_();
 
         // Emit original _message event with raw data
-        this.emit(Connection.Events.MESSAGE, data);
+        this.emit(ServerConnection.Events.MESSAGE, data);
 
         // Message without response (no id fields)
         if (!message.id && Message.ReservedNames.indexOf(message.name) == -1)
@@ -103,7 +111,7 @@ class Connection extends EventEmitter {
                 .send_(message.createResponse(null, responsePayload))
                 .then(() => {
                     this.joinRoom('/');
-                    this.emit(Connection.Events.HANDSHAKE_OK);
+                    this.emit(ServerConnection.Events.HANDSHAKE_OK);
                 })
                 .catch(() => {
                     console.log(`Handshake resolve response failed to send for ${this.id}.`);
@@ -161,13 +169,13 @@ class Connection extends EventEmitter {
 
 
     onError_(err) {
-        this.emit(Connection.Events.ERROR, err);
+        this.emit(ServerConnection.Events.ERROR, err);
         this.onClose_(500, err);
     }
 
 
     onClose_(code, message) {
-        if (this.state == Connection.States.CLOSE)
+        if (this.state == ServerConnection.States.CLOSE)
             return;
 
         this.server.rooms.removeFromAll(this);
@@ -177,26 +185,53 @@ class Connection extends EventEmitter {
         });
         this.deferreds_ = {};
 
-        this.state = Connection.States.CLOSE;
-        this.emit(Connection.Events.CLOSE, code, message);
+        this.state = ServerConnection.States.CLOSE;
+        this.emit(ServerConnection.Events.CLOSE, code, message);
     }
 
 
+    /**
+     * Joins the connection into provided room. If there is no room, it will be created automatically.
+     *
+     * @param {string} roomName
+     * @memberOf ServerConnection
+     */
     joinRoom(roomName) {
         this.server.rooms.add(roomName, this);
     }
 
 
+    /**
+     * Leaves the connection from provided room.
+     *
+     * @param {string} roomName
+     * @memberOf ServerConnection
+     */
     leaveRoom(roomName) {
         this.server.rooms.remove(roomName, this);
     }
 
 
+
+    /**
+     * Gets the joined room names.
+     *
+     * @returns {Array<string>}
+     * @memberOf ServerConnection
+     */
     getRooms() {
-        this.server.rooms.getRoomsOf(this);
+        return this.server.rooms.getRoomsOf(this);
     }
 
 
+    /**
+     * Sends a message and waits for its response.
+     *
+     * @param {string} eventName
+     * @param {any} payload
+     * @returns {Promise<any>}
+     * @memberOf ServerConnection
+     */
     send(eventName, payload) {
         const message = new Message({name: eventName, payload});
         message.setId();
@@ -216,6 +251,14 @@ class Connection extends EventEmitter {
     }
 
 
+    /**
+     * Sends a message without waiting response.
+     *
+     * @param {any} eventName
+     * @param {any} payload
+     * @returns {Promise}
+     * @memberOf ServerConnection
+     */
     sendWithoutResponse(eventName, payload) {
         const message = new Message({name: eventName, payload});
         return this.send_(message);
@@ -232,6 +275,12 @@ class Connection extends EventEmitter {
     }
 
 
+    /**
+     * Pings the client. If there is no respose, closes the connection.
+     *
+     * @returns {Promise}
+     * @memberOf ServerConnection
+     */
     ping() {
         return Utils
             .retry(_ => this.send(Message.Names.PING), {maxCount: 3, initialDelay: 1, increaseFactor: 1})
@@ -243,13 +292,26 @@ class Connection extends EventEmitter {
 }
 
 
-Connection.States = {
+/**
+ * @readonly
+ * @enum {string}
+ * @property {'open'} ServerConnection.States.OPEN
+ * @property {'close'} ServerConnection.States.CLOSE
+ */
+ServerConnection.States = {
     OPEN: 'open',
     CLOSE: 'close'
 };
 
 
-Connection.Events = {
+/**
+ * @readonly
+ * @enum {string}
+ * @property {'_message'} ServerConnection.Events.MESSAGE
+ * @property {'_error'} ServerConnection.Events.ERROR
+ * @property {'_close'} ServerConnection.Events.CLOSE
+ */
+ServerConnection.Events = {
     MESSAGE: '_message',
     HANDSHAKE_OK: '_handshakeOk', // Private
     ERROR: '_error',
@@ -257,4 +319,4 @@ Connection.Events = {
 };
 
 
-module.exports = Connection;
+module.exports = ServerConnection;
