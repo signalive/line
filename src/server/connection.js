@@ -10,250 +10,250 @@ import * as uuid from 'node-uuid';
 
 
 class Connection extends EventEmitter {
-	constructor(socket, server) {
-		super();
+    constructor(socket, server) {
+        super();
 
-		this.id = uuid.v4();
+        this.id = uuid.v4();
 
-		this.socket = socket;
-		this.server = server;
+        this.socket = socket;
+        this.server = server;
 
-		this.deferreds_ = {};
-		this.state = Connection.States.OPEN;
+        this.deferreds_ = {};
+        this.state = Connection.States.OPEN;
 
-		this.socket.on('message', this.onMessage_.bind(this));
-		this.socket.on('error', this.onError_.bind(this));
-		this.socket.on('close', this.onClose_.bind(this));
+        this.socket.on('message', this.onMessage_.bind(this));
+        this.socket.on('error', this.onError_.bind(this));
+        this.socket.on('close', this.onClose_.bind(this));
 
-		this.autoPing_ = server.options.pingInterval > 0 ?
-			debounce(() => {
-				if (this.state != Connection.States.OPEN)
-					return;
+        this.autoPing_ = server.options.pingInterval > 0 ?
+            debounce(() => {
+                if (this.state != Connection.States.OPEN)
+                    return;
 
-				this
-					.ping()
-					.then(() => {
-						if (server.options.pingInterval > 0 && this.state == Connection.States.OPEN) {
-							this.autoPing_();
-						}
-					})
-					.catch(() => {});
-			}, server.options.pingInterval) :
-			() => {};
-	}
-
-
-	onMessage_(data, flags) {
-		const message = Message.parse(data);
-
-		this.autoPing_();
-
-		// Emit original _message event with raw data
-		this.emit(Connection.Events.MESSAGE, data);
-
-		// Message without response (no id fields)
-		if (!message.id && Message.ReservedNames.indexOf(message.name) == -1)
-			return this.emit(message.name, message);
-
-		// Handshake
-		if (message.name == Message.Names.HANDSHAKE) {
-			return this.onHandshake_(message);
-		}
-
-		// Ping
-		if (message.name == Message.Names.PING) {
-			return this.onPing_(message);
-		}
-
-		// Message response
-		if (message.name == Message.Names.RESPONSE && this.deferreds_[message.id]) {
-			return this.onResponse_(message);
-		}
-
-		// Message with response
-		message.once('resolved', payload => {
-			this.send_(message.createResponse(null, payload));
-			message.dispose();
-		});
-
-		message.once('rejected', err => {
-	        if (isObject(err) && err instanceof Error && err.name == 'Error')
-	           err = {message: err.message, name: 'Error'};
-			this.send_(message.createResponse(err));
-			message.dispose();
-		});
-
-		this.emit(message.name, message);
-	}
+                this
+                    .ping()
+                    .then(() => {
+                        if (server.options.pingInterval > 0 && this.state == Connection.States.OPEN) {
+                            this.autoPing_();
+                        }
+                    })
+                    .catch(() => {});
+            }, server.options.pingInterval) :
+            () => {};
+    }
 
 
-	onHandshake_(message) {
-		message.once('resolved', payload => {
-			const responsePayload = {
-				handshakePayload: payload,
-				id: this.id,
-				timeout: this.server.options.timeout,
-				maxReconnectDelay: this.server.options.maxReconnectDelay,
-				initialReconnectDelay: this.server.options.initialReconnectDelay,
-				reconnectIncrementFactor: this.server.options.reconnectIncrementFactor,
-				pingInterval: this.server.options.pingInterval
-			};
+    onMessage_(data, flags) {
+        const message = Message.parse(data);
 
-			this
-				.send_(message.createResponse(null, responsePayload))
-				.then(() => {
-					this.joinRoom('/');
-					this.emit(Connection.Events.HANDSHAKE_OK);
-				})
-				.catch(() => {
-					console.log(`Handshake resolve response failed to send for ${this.id}.`);
-					this.onClose_(500, err);
-				})
-				.then(() => {
-					message.dispose();
-				});
-		});
+        this.autoPing_();
 
-		message.once('rejected', err => {
-	        if (isObject(err) && err instanceof Error && err.name == 'Error')
-	           err = {message: err.message, name: 'Error'};
+        // Emit original _message event with raw data
+        this.emit(Connection.Events.MESSAGE, data);
 
-			this
-				.send_(message.createResponse(err))
-				.catch(err_ => {
-					console.log(`Handshake reject response failed to send for ${this.id}.`);
-				})
-				.then(() => {
-					this.onClose_(500, err);
-					message.dispose();
-				});
-		});
+        // Message without response (no id fields)
+        if (!message.id && Message.ReservedNames.indexOf(message.name) == -1)
+            return this.emit(message.name, message);
 
-		// Sorry for party rocking
-		const handshakeResponse = this.server.emit('handshake', this, message);
+        // Handshake
+        if (message.name == Message.Names.HANDSHAKE) {
+            return this.onHandshake_(message);
+        }
 
-		if (!handshakeResponse)
-			message.resolve();
-	}
+        // Ping
+        if (message.name == Message.Names.PING) {
+            return this.onPing_(message);
+        }
+
+        // Message response
+        if (message.name == Message.Names.RESPONSE && this.deferreds_[message.id]) {
+            return this.onResponse_(message);
+        }
+
+        // Message with response
+        message.once('resolved', payload => {
+            this.send_(message.createResponse(null, payload));
+            message.dispose();
+        });
+
+        message.once('rejected', err => {
+            if (isObject(err) && err instanceof Error && err.name == 'Error')
+               err = {message: err.message, name: 'Error'};
+            this.send_(message.createResponse(err));
+            message.dispose();
+        });
+
+        this.emit(message.name, message);
+    }
 
 
-	onResponse_(message) {
-		const deferred = this.deferreds_[message.id];
+    onHandshake_(message) {
+        message.once('resolved', payload => {
+            const responsePayload = {
+                handshakePayload: payload,
+                id: this.id,
+                timeout: this.server.options.timeout,
+                maxReconnectDelay: this.server.options.maxReconnectDelay,
+                initialReconnectDelay: this.server.options.initialReconnectDelay,
+                reconnectIncrementFactor: this.server.options.reconnectIncrementFactor,
+                pingInterval: this.server.options.pingInterval
+            };
 
-		if (message.err) {
-			const err = assign(new Error(), message.err);
-			deferred.reject(err);
-		} else {
-			deferred.resolve(message.payload);
-		}
+            this
+                .send_(message.createResponse(null, responsePayload))
+                .then(() => {
+                    this.joinRoom('/');
+                    this.emit(Connection.Events.HANDSHAKE_OK);
+                })
+                .catch(() => {
+                    console.log(`Handshake resolve response failed to send for ${this.id}.`);
+                    this.onClose_(500, err);
+                })
+                .then(() => {
+                    message.dispose();
+                });
+        });
 
-		delete this.deferreds_[message.id];
-	}
+        message.once('rejected', err => {
+            if (isObject(err) && err instanceof Error && err.name == 'Error')
+               err = {message: err.message, name: 'Error'};
 
+            this
+                .send_(message.createResponse(err))
+                .catch(err_ => {
+                    console.log(`Handshake reject response failed to send for ${this.id}.`);
+                })
+                .then(() => {
+                    this.onClose_(500, err);
+                    message.dispose();
+                });
+        });
 
-	onPing_(message) {
-		this
-			.send_(message.createResponse(null, 'pong'))
-			.catch(err => {
-				console.log('Ping responce failed to send', err);
-			});
-	}
+        // Sorry for party rocking
+        const handshakeResponse = this.server.emit('handshake', this, message);
 
-
-	onError_(err) {
-		this.emit(Connection.Events.ERROR, err);
-		this.onClose_(500, err);
-	}
-
-
-	onClose_(code, message) {
-		if (this.state == Connection.States.CLOSE)
-			return;
-
-		this.server.rooms.removeFromAll(this);
-
-		forEach(this.deferreds_, (deferred) => {
-			deferred.reject(new Error('Socket connection closed!'));
-		});
-		this.deferreds_ = {};
-
-		this.state = Connection.States.CLOSE;
-		this.emit(Connection.Events.CLOSE, code, message);
-	}
-
-
-	joinRoom(roomName) {
-		this.server.rooms.add(roomName, this);
-	}
-
-
-	leaveRoom(roomName) {
-		this.server.rooms.remove(roomName, this);
-	}
+        if (!handshakeResponse)
+            message.resolve();
+    }
 
 
-	getRooms() {
-		this.server.rooms.getRoomsOf(this);
-	}
+    onResponse_(message) {
+        const deferred = this.deferreds_[message.id];
+
+        if (message.err) {
+            const err = assign(new Error(), message.err);
+            deferred.reject(err);
+        } else {
+            deferred.resolve(message.payload);
+        }
+
+        delete this.deferreds_[message.id];
+    }
 
 
-	send(eventName, payload) {
-		const message = new Message({name: eventName, payload});
-		message.setId();
-
-		return this
-			.send_(message)
-			.then(_ => {
-				const deferred = this.deferreds_[message.id] = new Deferred({
-					onExpire: () => {
-						delete this.deferreds_[message.id];
-					},
-					timeout: this.server.options.timeout
-				});
-
-				return deferred;
-			});
-	}
+    onPing_(message) {
+        this
+            .send_(message.createResponse(null, 'pong'))
+            .catch(err => {
+                console.log('Ping responce failed to send', err);
+            });
+    }
 
 
-	sendWithoutResponse(eventName, payload) {
-		const message = new Message({name: eventName, payload});
-		return this.send_(message);
-	}
+    onError_(err) {
+        this.emit(Connection.Events.ERROR, err);
+        this.onClose_(500, err);
+    }
 
 
-	send_(message) {
-		return new Promise((resolve, reject) => {
-			this.socket.send(message.toString(), err => {
-				if (err) return reject(err);
-				resolve();
-			});
-		});
-	}
+    onClose_(code, message) {
+        if (this.state == Connection.States.CLOSE)
+            return;
+
+        this.server.rooms.removeFromAll(this);
+
+        forEach(this.deferreds_, (deferred) => {
+            deferred.reject(new Error('Socket connection closed!'));
+        });
+        this.deferreds_ = {};
+
+        this.state = Connection.States.CLOSE;
+        this.emit(Connection.Events.CLOSE, code, message);
+    }
 
 
-	ping() {
-		return Utils
-			.retry(_ => this.send(Message.Names.PING), {maxCount: 3, initialDelay: 1, increaseFactor: 1})
-			.catch(err => {
-				this.onClose_(410, new Error('Ping failed, dead connection'));
-				throw err;
-			});
-	}
+    joinRoom(roomName) {
+        this.server.rooms.add(roomName, this);
+    }
+
+
+    leaveRoom(roomName) {
+        this.server.rooms.remove(roomName, this);
+    }
+
+
+    getRooms() {
+        this.server.rooms.getRoomsOf(this);
+    }
+
+
+    send(eventName, payload) {
+        const message = new Message({name: eventName, payload});
+        message.setId();
+
+        return this
+            .send_(message)
+            .then(_ => {
+                const deferred = this.deferreds_[message.id] = new Deferred({
+                    onExpire: () => {
+                        delete this.deferreds_[message.id];
+                    },
+                    timeout: this.server.options.timeout
+                });
+
+                return deferred;
+            });
+    }
+
+
+    sendWithoutResponse(eventName, payload) {
+        const message = new Message({name: eventName, payload});
+        return this.send_(message);
+    }
+
+
+    send_(message) {
+        return new Promise((resolve, reject) => {
+            this.socket.send(message.toString(), err => {
+                if (err) return reject(err);
+                resolve();
+            });
+        });
+    }
+
+
+    ping() {
+        return Utils
+            .retry(_ => this.send(Message.Names.PING), {maxCount: 3, initialDelay: 1, increaseFactor: 1})
+            .catch(err => {
+                this.onClose_(410, new Error('Ping failed, dead connection'));
+                throw err;
+            });
+    }
 }
 
 
 Connection.States = {
-	OPEN: 'open',
-	CLOSE: 'close'
+    OPEN: 'open',
+    CLOSE: 'close'
 };
 
 
 Connection.Events = {
-	MESSAGE: '_message',
-	HANDSHAKE_OK: '_handshakeOk', // Private
-	ERROR: '_error',
-	CLOSE: '_close'
+    MESSAGE: '_message',
+    HANDSHAKE_OK: '_handshakeOk', // Private
+    ERROR: '_error',
+    CLOSE: '_close'
 };
 
 
