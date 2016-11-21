@@ -35,12 +35,17 @@ class Connection extends EventEmitter {
 			return this.emit(message.name, message);
 
 		// Handshake
-		if (message.name == '_h') {
+		if (message.name == Message.Names.HANDSHAKE) {
 			return this.onHandshake_(message);
 		}
 
+		// Ping
+		if (message.name == Message.Names.PING) {
+			return this.onPing_(message);
+		}
+
 		// Message response
-		if (message.name == '_r' && this.deferreds_[message.id]) {
+		if (message.name == Message.Names.RESPONSE && this.deferreds_[message.id]) {
 			return this.onResponse_(message);
 		}
 
@@ -92,7 +97,7 @@ class Connection extends EventEmitter {
 	           err = {message: err.message, name: 'Error'};
 
 			this
-				.send_(message.createResponse(null, err))
+				.send_(message.createResponse(err))
 				.catch(err_ => {
 					console.log(`Handshake reject response failed to send for ${this.id}.`);
 				})
@@ -121,6 +126,15 @@ class Connection extends EventEmitter {
 		}
 
 		delete this.deferreds_[message.id];
+	}
+
+
+	onPing_(message) {
+		Utils
+			.retry(_ => this.send_(message.createResponse(null, 'pong')), {maxCount: 3, initialDelay: 1, increaseFactor: 1})
+			.catch(err => {
+				console.log('Ping responce failed to send', err);
+			});
 	}
 
 

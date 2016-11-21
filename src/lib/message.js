@@ -107,7 +107,8 @@ export default class Message extends EventEmitter {
 
 Message.Names = {
 	RESPONSE: '_r',
-	HANDSHAKE: '_h'
+	HANDSHAKE: '_h',
+	PING: '_p'
 };
 
 
