@@ -18,13 +18,13 @@ class Connection extends EventEmitter {
 		this.server = server;
 
 		this.deferreds_ = {};
-		this.socket.on('message', this.onMessage.bind(this));
-		this.socket.on('error', this.onError.bind(this));
-		this.socket.on('close', this.onClose.bind(this));
+		this.socket.on('message', this.onMessage_.bind(this));
+		this.socket.on('error', this.onError_.bind(this));
+		this.socket.on('close', this.onClose_.bind(this));
 	}
 
 
-	onMessage(data, flags) {
+	onMessage_(data, flags) {
 		const message = Message.parse(data);
 
 		// Emit original _message event with raw data
@@ -41,17 +41,7 @@ class Connection extends EventEmitter {
 
 		// Message response
 		if (message.name == '_r' && this.deferreds_[message.id]) {
-			const deferred = this.deferreds_[message.id];
-
-			if (message.err) {
-				const err = assign(new Error(), message.err);
-				deferred.reject(err);
-			} else {
-				deferred.resolve(message.payload);
-			}
-
-			delete this.deferreds_[message.id];
-			return;
+			return this.onResponse_(message);
 		}
 
 		// Message with response
@@ -90,7 +80,7 @@ class Connection extends EventEmitter {
 				})
 				.catch(() => {
 					console.log(`Handshake resolve response failed to send for ${this.id}.`);
-					this.onClose(500, err);
+					this.onClose_(500, err);
 				})
 				.then(() => {
 					message.dispose();
@@ -107,7 +97,7 @@ class Connection extends EventEmitter {
 					console.log(`Handshake reject response failed to send for ${this.id}.`);
 				})
 				.then(() => {
-					this.onClose(500, err);
+					this.onClose_(500, err);
 					message.dispose();
 				});
 		});
@@ -120,11 +110,26 @@ class Connection extends EventEmitter {
 	}
 
 
-	onError(err) {
+	onResponse_(message) {
+		const deferred = this.deferreds_[message.id];
+
+		if (message.err) {
+			const err = assign(new Error(), message.err);
+			deferred.reject(err);
+		} else {
+			deferred.resolve(message.payload);
+		}
+
+		delete this.deferreds_[message.id];
+	}
+
+
+	onError_(err) {
 		this.emit(Connection.Events.ERROR, err);
 	}
 
-	onClose(code, message) {
+
+	onClose_(code, message) {
 		this.server.rooms.removeFromAll(this);
 
 		forEach(this.deferreds_, (deferred) => {
@@ -135,6 +140,7 @@ class Connection extends EventEmitter {
 		this.emit(Connection.Events.CLOSE, code, message);
 	}
 
+
 	joinRoom(roomName) {
 		this.server.rooms.add(roomName, this);
 	}
@@ -144,9 +150,11 @@ class Connection extends EventEmitter {
 		this.server.rooms.remove(roomName, this);
 	}
 
+
 	getRooms() {
 		this.server.rooms.getRoomsOf(this);
 	}
+
 
 	send(eventName, payload) {
 		const message = new Message({name: eventName, payload});
@@ -166,10 +174,12 @@ class Connection extends EventEmitter {
 			});
 	}
 
+
 	sendWithoutResponse(eventName, payload) {
 		const message = new Message({name: eventName, payload});
 		return this.send_(message);
 	}
+
 
 	send_(message) {
 		return new Promise((resolve, reject) => {
