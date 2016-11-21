@@ -227,12 +227,23 @@ class ServerConnection extends EventEmitterExtra {
 
 
     /**
-     * Sends a message and waits for its response.
+     * Sends a message to client and waits for its response.
      *
      * @param {string} eventName
-     * @param {any} payload
+     * @param {any=} payload
      * @returns {Promise<any>}
      * @memberOf ServerConnection
+     * @example
+     * connection
+     *   .send('hello', {optional: 'payload'})
+     *   .then(responsePayload => {
+     *     // Message is resolved by client
+     *   })
+     *   .catch(err => {
+     *     // Could not send message
+     *     // or
+     *     // Client rejected the message!
+     *   });
      */
     send(eventName, payload) {
         const message = new Message({name: eventName, payload});
@@ -254,12 +265,21 @@ class ServerConnection extends EventEmitterExtra {
 
 
     /**
-     * Sends a message without waiting response.
+     * Sends a message to client without waiting response.
      *
-     * @param {any} eventName
-     * @param {any} payload
+     * @param {string} eventName
+     * @param {any=} payload
      * @returns {Promise}
      * @memberOf ServerConnection
+     * @example
+     * connection
+     *   .sendWithoutResponse('hello', {optional: 'payload'})
+     *   .then(() => {
+     *     // Message sent successfully
+     *   })
+     *   .catch(err => {
+     *     // Message could not be sent to client
+     *   })
      */
     sendWithoutResponse(eventName, payload) {
         const message = new Message({name: eventName, payload});

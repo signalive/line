@@ -10,7 +10,7 @@ import EventEmitterExtra from 'event-emitter-extra/dist/commonjs.modern';
  *
  * @class Server
  * @extends {EventEmitterExtra}
- * @param {Object=} options Optional options object.
+ * @param {Object=} options Options object.
  * @param {string=} options.host Server host name. Inherited from uws, [see docs](https://github.com/websockets/ws/blob/master/doc/ws.md#new-websocketserveroptions-callback).
  * @param {number=} options.port Server port. Inherited from uws, [see docs](https://github.com/websockets/ws/blob/master/doc/ws.md#new-websocketserveroptions-callback).
  * @param {http.Server=} options.server Server object to be attached. If provided, `host` and `port` will ignored. Inherited from uws, [see docs](https://github.com/websockets/ws/blob/master/doc/ws.md#new-websocketserveroptions-callback).

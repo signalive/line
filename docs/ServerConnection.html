@@ -226,7 +226,7 @@ of <code>ServerConnection</code> will be emitted.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="connection.js.html">connection.js</a>, <a href="connection.js.html#line319">line 319</a>
+        <a href="connection.js.html">connection.js</a>, <a href="connection.js.html#line339">line 339</a>
     </li></ul></dd>
     
 
@@ -416,7 +416,7 @@ of <code>ServerConnection</code> will be emitted.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="connection.js.html">connection.js</a>, <a href="connection.js.html#line302">line 302</a>
+        <a href="connection.js.html">connection.js</a>, <a href="connection.js.html#line322">line 322</a>
     </li></ul></dd>
     
 
@@ -938,7 +938,7 @@ of <code>ServerConnection</code> will be emitted.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="connection.js.html">connection.js</a>, <a href="connection.js.html#line286">line 286</a>
+        <a href="connection.js.html">connection.js</a>, <a href="connection.js.html#line306">line 306</a>
     </li></ul></dd>
     
 
@@ -1028,7 +1028,7 @@ of <code>ServerConnection</code> will be emitted.</p>
 
     
 
-    <h4 class="name" id="send"><span class="type-signature"></span>send<span class="signature">(eventName, payload)</span><span class="type-signature"> &rarr; {Promise.&lt;any>}</span></h4>
+    <h4 class="name" id="send"><span class="type-signature"></span>send<span class="signature">(eventName, payload<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Promise.&lt;any>}</span></h4>
 
     
 
@@ -1040,7 +1040,7 @@ of <code>ServerConnection</code> will be emitted.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="connection.js.html">connection.js</a>, <a href="connection.js.html#line237">line 237</a>
+        <a href="connection.js.html">connection.js</a>, <a href="connection.js.html#line248">line 248</a>
     </li></ul></dd>
     
 
@@ -1080,7 +1080,7 @@ of <code>ServerConnection</code> will be emitted.</p>
 
 
 <div class="description">
-    <p>Sends a message and waits for its response.</p>
+    <p>Sends a message to client and waits for its response.</p>
 </div>
 
 
@@ -1089,6 +1089,20 @@ of <code>ServerConnection</code> will be emitted.</p>
 
 
 
+
+
+    <h5>Example</h5>
+    
+    <pre class="prettyprint"><code>connection
+  .send('hello', {optional: 'payload'})
+  .then(responsePayload => {
+    // Message is resolved by client
+  })
+  .catch(err => {
+    // Could not send message
+    // or
+    // Client rejected the message!
+  });</code></pre>
 
 
 
@@ -1105,6 +1119,8 @@ of <code>ServerConnection</code> will be emitted.</p>
 
         <th>Type</th>
 
+        
+        <th>Attributes</th>
         
 
         
@@ -1131,6 +1147,14 @@ of <code>ServerConnection</code> will be emitted.</p>
             </td>
 
             
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
 
             
 
@@ -1153,6 +1177,16 @@ of <code>ServerConnection</code> will be emitted.</p>
             
             </td>
 
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
             
 
             
@@ -1202,7 +1236,7 @@ of <code>ServerConnection</code> will be emitted.</p>
 
     
 
-    <h4 class="name" id="sendWithoutResponse"><span class="type-signature"></span>sendWithoutResponse<span class="signature">(eventName, payload)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
+    <h4 class="name" id="sendWithoutResponse"><span class="type-signature"></span>sendWithoutResponse<span class="signature">(eventName, payload<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
 
     
 
@@ -1214,7 +1248,7 @@ of <code>ServerConnection</code> will be emitted.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="connection.js.html">connection.js</a>, <a href="connection.js.html#line264">line 264</a>
+        <a href="connection.js.html">connection.js</a>, <a href="connection.js.html#line284">line 284</a>
     </li></ul></dd>
     
 
@@ -1254,7 +1288,7 @@ of <code>ServerConnection</code> will be emitted.</p>
 
 
 <div class="description">
-    <p>Sends a message without waiting response.</p>
+    <p>Sends a message to client without waiting response.</p>
 </div>
 
 
@@ -1263,6 +1297,18 @@ of <code>ServerConnection</code> will be emitted.</p>
 
 
 
+
+
+    <h5>Example</h5>
+    
+    <pre class="prettyprint"><code>connection
+  .sendWithoutResponse('hello', {optional: 'payload'})
+  .then(() => {
+    // Message sent successfully
+  })
+  .catch(err => {
+    // Message could not be sent to client
+  })</code></pre>
 
 
 
@@ -1279,6 +1325,8 @@ of <code>ServerConnection</code> will be emitted.</p>
 
         <th>Type</th>
 
+        
+        <th>Attributes</th>
         
 
         
@@ -1298,12 +1346,20 @@ of <code>ServerConnection</code> will be emitted.</p>
             <td class="type">
             
                 
-<span class="param-type">any</span>
+<span class="param-type">string</span>
 
 
             
             </td>
 
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
             
 
             
@@ -1327,6 +1383,16 @@ of <code>ServerConnection</code> will be emitted.</p>
             
             </td>
 
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
             
 
             
@@ -1389,7 +1455,7 @@ of <code>ServerConnection</code> will be emitted.</p>
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.3</a> on Mon Nov 21 2016 21:08:14 GMT+0300 (+03) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.3</a> on Mon Nov 21 2016 21:27:48 GMT+0300 (+03) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
 </footer>
 
 <script>prettyPrint();</script>
