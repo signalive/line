@@ -12,9 +12,6 @@ const Message = require('../lib/message');
  */
 class ServerRoom {
     constructor(name, connections = {}) {
-        if (name == '/')
-            throw Error('Room "/" is reserved');
-
         this.name = name;
         this.connections = connections;
     }
