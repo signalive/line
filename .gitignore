@@ -1,4 +1,5 @@
 node_modules
+coverage
 /client-node.js
 /client-web.js
 /server.js

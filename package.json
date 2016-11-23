@@ -7,8 +7,9 @@
     "build:dev": "webpack",
     "build:docs": "jsdoc ./src/**/* -c .jsdoc.json",
     "build:watch": "webpack -p -w",
+    "coverage": "istanbul cover ./node_modules/.bin/_mocha -- test/runner-coverage.js -R spec",
     "postinstall": "./scripts/symlink.sh",
-    "test": "mocha test/test.js"
+    "test": "mocha test/runner.js"
   },
   "keywords": [],
   "author": "",
@@ -35,6 +36,7 @@
     "chai": "3.5.0",
     "chai-as-promised": "6.0.0",
     "docdash": "0.4.0",
+    "istanbul": "0.4.5",
     "jsdoc": "3.4.3",
     "minami": "1.1.1",
     "mocha": "3.1.2",
