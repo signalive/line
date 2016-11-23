@@ -133,7 +133,7 @@ const client = new LineClient('ws://localhost:3000', {
 Documentation
 ---------------
 
-Extended documentation can be found [here](https://github.com/signalive/line).
+Extended documentation can be found [here](https://signalive.github.io/line).
 
 -----------
 License
