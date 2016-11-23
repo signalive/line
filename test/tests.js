@@ -60,9 +60,9 @@ describe('Line Tests', function() {
     });
 
 
-    it('client should send message to server', function() {
+    it('client should send message to server and server should resolve', function() {
         const spies = [
-            sinon.spy(message => message.resolve()),
+            sinon.spy(message => message.resolve({some: 'response'})),
             sinon.spy(message => message.resolve()),
             sinon.spy(message => message.resolve()),
             sinon.spy(message => message.resolve())
@@ -75,12 +75,28 @@ describe('Line Tests', function() {
 
         return clients[0]
             .send('test', {hello: 'world'})
-            .then(_ => {
+            .then(response => {
+                response.should.deep.equal({some: 'response'})
                 spies[0].should.have.been.calledOnce;
                 spies[0].should.have.been.calledWithMatch({payload: {hello: 'world'}});
                 spies[1].should.not.have.been.called;
                 spies[2].should.not.have.been.called;
                 spies[3].should.not.have.been.called;
+            });
+    });
+
+
+    it('client should send message to server and server should reject', function() {
+        const spy = sinon.spy(message => message.reject(new Error('Message rejected bro')));
+        connections[0].on('test', spy);
+
+        return clients[0]
+            .send('test', {hello: 'world'})
+            .should.be.rejectedWith(Error)
+            .then(err => {
+                err.message.should.equal('Message rejected bro');
+                spy.should.have.been.calledOnce;
+                spy.should.have.been.calledWithMatch({payload: {hello: 'world'}});
             });
     });
 
@@ -120,9 +136,9 @@ describe('Line Tests', function() {
     });
 
 
-    it('server should send message to specific client', function() {
+    it('server should send message to specific client and client should resolve', function() {
         const spies = [
-            sinon.spy(message => message.resolve()),
+            sinon.spy(message => message.resolve({some: 'response'})),
             sinon.spy(message => message.resolve()),
             sinon.spy(message => message.resolve()),
             sinon.spy(message => message.resolve())
@@ -135,12 +151,28 @@ describe('Line Tests', function() {
 
         return connections[0]
             .send('test', {hello: 'world'})
-            .then(_ => {
+            .then(response => {
+                response.should.deep.equal({some: 'response'});
                 spies[0].should.have.been.calledOnce;
                 spies[0].should.have.been.calledWithMatch({payload: {hello: 'world'}});
                 spies[1].should.not.have.been.called;
                 spies[2].should.not.have.been.called;
                 spies[3].should.not.have.been.called;
+            });
+    });
+
+
+    it('server should send message to specific client and client should reject', function() {
+        const spy = sinon.spy(message => message.reject(new Error('Hmmmppph, no')));
+        clients[0].on('test', spy);
+
+        return connections[0]
+            .send('test', {hello: 'world'})
+            .should.be.rejectedWith(Error)
+            .then(err => {
+                err.message.should.equal('Hmmmppph, no');
+                spy.should.have.been.calledOnce;
+                spy.should.have.been.calledWithMatch({payload: {hello: 'world'}});
             });
     });
 
@@ -245,6 +277,125 @@ describe('Line Tests', function() {
                 spies[2].should.have.been.calledOnce;
                 spies[2].should.have.been.calledWithMatch({payload: {hello: 'from room2'}});
                 spies[3].should.not.have.been.called;
+            });
+    });
+
+
+    it('server should accept/reject handshake', function() {
+        const server = new Server({port: 3001});
+        const clients = [
+            new Client('ws://localhost:3001', {handshakePayload: {id: 1}}),
+            new Client('ws://localhost:3001', {handshakePayload: {id: 2}}),
+            new Client('ws://localhost:3001', {handshakePayload: {id: 3}})
+        ];
+
+        server.on('handshake', (connection, handshake) => {
+            if (handshake.payload.id <= 2)
+                handshake.resolve({welcome: 'bro'});
+            else
+                handshake.reject(new Error('Sorry bro'));
+        });
+
+        return server
+            .start()
+            .then(_ => clients[0].connect())
+            .then(response => {
+                response.should.deep.equal({welcome: 'bro'});
+                return clients[1].connect();
+            })
+            .then(response => {
+                response.should.deep.equal({welcome: 'bro'});
+                return clients[2].connect();
+            })
+            // .should.be.rejectedWith(Error) // TODO: Support this
+            .should.be.rejected
+            // TODO: Rejected client should not retry to connect!
+            .then(_ => Promise.all([
+                clients[0].disconnect(),
+                clients[1].disconnect()
+            ]))
+            .then(_ => server.stop());
+    });
+
+
+    it('server should auto ping clients (3 times)', function() {
+        this.timeout(4000);
+
+        const server = new Server({port: 3001, pingInterval: 1000});
+        const clients = [
+            new Client('ws://localhost:3001'),
+            new Client('ws://localhost:3001')
+        ];
+
+        const spies = [
+            sinon.spy(clients[0], 'onPing_'),
+            sinon.spy(clients[1], 'onPing_')
+        ];
+
+        return server
+            .start()
+            .then(_ => Promise.all([
+                clients[0].connect(),
+                clients[1].connect()
+            ]))
+            .then(_ => wait(3500))
+            .then(_ => {
+                spies[0].should.be.calledThrice;
+                spies[1].should.be.calledThrice;
+
+                spies[0].restore();
+                spies[1].restore();
+            })
+            .then(_ => Promise.all([
+                clients[0].disconnect(),
+                clients[1].disconnect()
+            ]))
+            .then(_ => server.stop());
+    });
+
+
+    it('server should close connection if ping is failed', function() {
+        const connectionPingStub = sinon.stub(connections[0], 'send');
+        connectionPingStub.withArgs('_p').returns(Promise.reject(new Error('No ping allowed')));
+        connectionPingStub.returns(Promise.resolve());
+
+        const clientCloseSpy = sinon.spy();
+        clients[0].on('_closed', clientCloseSpy);
+
+        return connections[0]
+            .ping()
+            .should.be.rejectedWith(Error)
+            .then(err => {
+                err.message.should.equal('No ping allowed');
+                connectionPingStub.restore();
+
+                return wait(50);
+            })
+            .then(_ => {
+                clientCloseSpy.should.have.been.calledOnce;
+            });
+    });
+
+
+    it('client should close connection if ping is failed', function() {
+        const clientPingStub = sinon.stub(clients[0], 'send');
+        clientPingStub.withArgs('_p').returns(Promise.reject(new Error('No ping allowed')));
+        clientPingStub.returns(Promise.resolve());
+
+        const connectionCloseSpy = sinon.spy();
+        connections[0].on('_close', connectionCloseSpy);
+
+        return clients[0]
+            .ping()
+            .should.be.rejectedWith(Error)
+            .then(err => {
+                err.message.should.equal('No ping allowed');
+                clientPingStub.restore();
+
+                return wait(50);
+            })
+            .then(_ => {
+                connectionCloseSpy.should.have.been.calledOnce;
             });
     });
 });
