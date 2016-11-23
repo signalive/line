@@ -3,7 +3,7 @@ import EventEmitter from 'event-emitter-extra';
 import assign from 'lodash/assign';
 import forEach from 'lodash/forEach';
 import isObject from 'lodash/isObject';
-import * as uuid from 'node-uuid';
+import * as uuid from 'uuid';
 
 
 class Connection extends EventEmitter {
