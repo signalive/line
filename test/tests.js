@@ -321,7 +321,7 @@ describe('Line Tests', function() {
 
 
     it('server should auto ping clients (3 times)', function() {
-        this.timeout(4000);
+        this.timeout(10000);
 
         const server = new Server({port: 3001, pingInterval: 1000});
         const clients = [
