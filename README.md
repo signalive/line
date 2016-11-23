@@ -12,7 +12,7 @@ We built *line* on top of the fastest socket implementation in the Node.JS ecosy
 Key Features
 ------------
  - Automated tests with significant code coverage
- - **Cross platforms**: Works on MacOS, Linux, Windows and browsers
+ - **Cross platform**: Works on MacOS, Linux, Windows and browsers
  - Developed in ES6 with Webpack, therefore we have a minified bundles that work nearly every platform without hassle
  - Apart from uWebSockets, we support **message responses**, **request timeouts**, **handshaking** and **client rooms**
  - **Easy configuring**: Configurations are asserted on server side and pushed to clients at handshake. No need to do configurations at the client side.
