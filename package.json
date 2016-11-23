@@ -24,7 +24,7 @@
   "dependencies": {
     "event-emitter-extra": "0.1.1",
     "lodash": "4.16.6",
-    "node-uuid": "1.4.7",
+    "uuid": "^3.0.0",
     "uws": "0.11.0"
   },
   "devDependencies": {

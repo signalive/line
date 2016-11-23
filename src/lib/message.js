@@ -1,5 +1,5 @@
 import isUndefined from 'lodash/isUndefined';
-import * as uuid from 'node-uuid';
+import * as uuid from 'uuid';
 import EventEmitter from 'event-emitter-extra';
 
 
