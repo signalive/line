@@ -3,6 +3,7 @@ const Utils = require('../lib/utils');
 const EventEmitter = require('event-emitter-extra/dist/commonjs.modern');
 const Deferred = require('../lib/deferred');
 const debounce = require('lodash/debounce');
+const isObject = require('lodash/isObject');
 
 
 class WebClient extends EventEmitter {
@@ -242,7 +243,7 @@ class WebClient extends EventEmitter {
         });
 
         message.once('rejected', err => {
-            if (_.isObject(err) && err instanceof Error && err.name == 'Error')
+            if (isObject(err) && err instanceof Error && err.name == 'Error')
                err = {message: err.message, name: 'Error'};
             this.send_(message.createResponse(err));
             message.dispose();
