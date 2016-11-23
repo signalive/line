@@ -1,7 +1,7 @@
 
 line
 =====
-*line* is a lightweight and efficient (web)-socket library that bears non-blocking interface and enormously scalable architecture.  *line* is **fast**, **reliable** and yet it supports **message responses**, **timeouts** and **rooms**. *line* internally monitors client's connection health, and it proactively strives to achieve a stable connection.
+*line* is a lightweight and efficient (web)-socket library that bears non-blocking interface and scalable architecture.  *line* is **fast**, **reliable** and yet it supports **message responses**, **response timeouts** and **client rooms**. *line* internally monitors connection health, and it pro-actively strives to achieve a stable connection.
 
 We built *line* on top of the fastest socket implementation in the Node.JS ecosystem, [uWebSockets](https://github.com/uWebSockets/uWebSockets). In that respect, it consumes order of magnitude **less memory** when compared to socket.io and it's kinds. *line* runs on Node.JS and all modern browsers through an identical API. Therefore, it is a good candidate for cross-platform applications.
 
