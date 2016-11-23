@@ -307,9 +307,14 @@ class ServerConnection extends EventEmitterExtra {
         return Utils
             .retry(_ => this.send(Message.Names.PING), {maxCount: 3, initialDelay: 1, increaseFactor: 1})
             .catch(err => {
-                this.onClose_(410, new Error('Ping failed, dead connection'));
+                this.close(410, new Error('Ping failed, dead connection'));
                 throw err;
             });
+    }
+
+
+    close(code, data) {
+        this.socket.close(code, data);
     }
 }
 
