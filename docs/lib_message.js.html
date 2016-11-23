@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>server/room.js - Documentation</title>
+    <title>lib/message.js - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -27,7 +27,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">server/room.js</h1>
+    <h1 class="page-title">lib/message.js</h1>
     
 
     
@@ -37,86 +37,143 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>const forEach = require('lodash/forEach');
-const Message = require('../lib/message');
+            <pre class="prettyprint source linenums"><code>const isUndefined = require('lodash/isUndefined');
+const isObject = require('lodash/isObject');
+const isFunction = require('lodash/isFunction');
+const values = require('lodash/values');
+const {generateDummyId} = require('./utils');
+const EventEmitterExtra = require('event-emitter-extra/dist/commonjs.modern');
 
 
 /**
- * Line room class.
+ * Message class.
  *
  * @private
- * @class ServerRoom
- * @param {string} name Room name
- * @property {string} name
+ * @class Message
+ * @extends {EventEmitterExtra}
+ * @property {string} name Event name
+ * @property {?any} payload Message payload.
  */
-class ServerRoom {
-    constructor(name, connections = {}) {
-        if (name == '/')
-            throw Error('Room "/" is reserved');
+class Message extends EventEmitterExtra {
+    static parse(raw) {
+        try {
+            const data = JSON.parse(raw);
+            return new Message({
+                name: data.n,
+                payload: data.p,
+                err: data.e,
+                id: data.i
+            });
+        } catch(err) {
+            throw new Error(`Could not parse message.`);
+        }
+    }
+
+    constructor({name, payload, id, err}) {
+        super();
 
         this.name = name;
-        this.connections = connections;
+        this.payload = payload;
+        this.id = id;
+        this.err = err;
+
+        this.isResponded_ = false;
+    }
+
+    setId(id = generateDummyId()) {
+        this.id = id;
+        return id;
+    }
+
+    createResponse(err, payload) {
+        return new Message({name: '_r', payload, err, id: this.id});
     }
 
 
     /**
-     * Adds a connection into room.
-     * @param {ServerConnection} connection
-     */
-    add(connection) {
-        this.connections[connection.id] = connection;
-    }
-
-
-    /**
-     * Removes a connection from room.
-     * @param {ServerConnection} connection
-     */
-    remove(connection) {
-        delete this.connections[connection.id];
-    }
-
-
-    /**
-     * Gets a connection by id.
-     * @param {string} connectionId
-     * @returns {?ServerConnection}
-     */
-    getConnectionById(connectionId) {
-        return this.connections[connectionId];
-    }
-
-
-    /**
-     * Returns the total connection count in room.
-     * @returns {number}
-     */
-    getConnectionsCount() {
-        return Object.keys(this.connections).length;
-    }
-
-    broadcast_(message) {
-        forEach(this.connections, connection => {
-            connection.send_(message)
-        });
-    }
-
-
-    /**
-     * Broadcast a message to all connections in the room.
-     * @param {string} eventName
+     * Resolves the message with sending a response back. If event source
+     * does not expecting a response, you don't need to call these methods.
      * @param {any=} payload
      */
-    broadcast(eventName, payload) {
-        const message = new Message({name: eventName, payload});
-        forEach(this.connections, (connection, index) => {
-            connection.send_(message)
-        });
+    resolve(payload) {
+        if (isUndefined(this.id))
+            return console.warn('[line] A message without an id cannot be resolved.');
+
+        if (this.isResponded_)
+            return console.warn('[line] This message has already been ended.');
+
+        // If thenable
+        if (isObject(payload) &amp;&amp; isFunction(payload.then)) {
+            payload
+                .then(response => {
+                    this.isResponded_ = true;
+                    this.emit('resolved', payload);
+                })
+                .catch(err => {
+                    this.isResponded_ = true;
+                    this.emit('rejected', err);
+                });
+
+            return;
+        }
+
+        this.isResponded_ = true;
+        this.emit('resolved', payload);
+    }
+
+
+    /**
+     * Rejects the message, with sending error response back to event source.
+     * @param {any=} err
+     */
+    reject(err) {
+        if (isUndefined(this.id))
+            return console.warn('[line] A message without an id cannot be rejected.');
+
+        if (this.isResponded_)
+            return console.warn('[line] This message has already been ended.');
+
+        this.isResponded_ = true;
+        this.emit('rejected', err);
+    }
+
+    toString() {
+        try {
+            const data = {n: this.name};
+
+            if (!isUndefined(this.payload))
+                data.p = this.payload;
+
+            if (!isUndefined(this.id))
+                data.i = this.id;
+
+            if (!isUndefined(this.err))
+                data.e = this.err;
+
+            return JSON.stringify(data);
+        } catch(err) {
+            throw new Error(`Could not stringify message.`);
+        }
+    }
+
+    dispose() {
+        const events = this.eventNames();
+        events.forEach(event => this.removeAllListeners(event));
     }
 }
 
 
-module.exports = ServerRoom;
+Message.Names = {
+    RESPONSE: '_r',
+    HANDSHAKE: '_h',
+    PING: '_p'
+};
+
+
+Message.ReservedNames = values(Message.Names);
+
+
+module.exports = Message;
 </code></pre>
         </article>
     </section>

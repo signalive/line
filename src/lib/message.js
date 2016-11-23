@@ -3,11 +3,19 @@ const isObject = require('lodash/isObject');
 const isFunction = require('lodash/isFunction');
 const values = require('lodash/values');
 const {generateDummyId} = require('./utils');
-const EventEmitter = require('event-emitter-extra/dist/commonjs.modern');
+const EventEmitterExtra = require('event-emitter-extra/dist/commonjs.modern');
 
 
-
-class Message extends EventEmitter {
+/**
+ * Message class.
+ *
+ * @private
+ * @class Message
+ * @extends {EventEmitterExtra}
+ * @property {string} name Event name
+ * @property {?any} payload Message payload.
+ */
+class Message extends EventEmitterExtra {
     static parse(raw) {
         try {
             const data = JSON.parse(raw);
@@ -42,6 +50,12 @@ class Message extends EventEmitter {
         return new Message({name: '_r', payload, err, id: this.id});
     }
 
+
+    /**
+     * Resolves the message with sending a response back. If event source
+     * does not expecting a response, you don't need to call these methods.
+     * @param {any=} payload
+     */
     resolve(payload) {
         if (isUndefined(this.id))
             return console.warn('[line] A message without an id cannot be resolved.');
@@ -68,6 +82,11 @@ class Message extends EventEmitter {
         this.emit('resolved', payload);
     }
 
+
+    /**
+     * Rejects the message, with sending error response back to event source.
+     * @param {any=} err
+     */
     reject(err) {
         if (isUndefined(this.id))
             return console.warn('[line] A message without an id cannot be rejected.');

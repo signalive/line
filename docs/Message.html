@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>ServerRoom - Documentation</title>
+    <title>Message - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -27,7 +27,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">ServerRoom</h1>
+    <h1 class="page-title">Message</h1>
     
 
     
@@ -40,7 +40,7 @@
 <header>
     
         <h2>
-        ServerRoom
+        Message
         </h2>
         
     
@@ -53,7 +53,7 @@
 
     
 
-    <h4 class="name" id="ServerRoom"><span class="type-signature">(private) </span>new ServerRoom<span class="signature">(name)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="Message"><span class="type-signature">(private) </span>new Message<span class="signature">()</span><span class="type-signature"></span></h4>
 
     
 
@@ -65,7 +65,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="server_room.js.html">server/room.js</a>, <a href="server_room.js.html#line5">line 5</a>
+        <a href="lib_message.js.html">lib/message.js</a>, <a href="lib_message.js.html#line9">line 9</a>
     </li></ul></dd>
     
 
@@ -116,6 +116,8 @@
         <th>Type</th>
 
         
+        <th>Attributes</th>
+        
 
         
 
@@ -141,10 +143,47 @@
             </td>
 
             
+                <td class="attributes">
+                
+
+                
+                </td>
+            
 
             
 
-            <td class="description last"></td>
+            <td class="description last"><p>Event name</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>payload</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">any</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+                    &lt;nullable><br>
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>Message payload.</p></td>
         </tr>
 
     
@@ -157,7 +196,7 @@
 
 
 <div class="description">
-    <p>Line room class.</p>
+    <p>Message class.</p>
 </div>
 
 
@@ -168,55 +207,6 @@
 
 
 
-
-
-    <h5>Parameters:</h5>
-    
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>name</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">string</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"><p>Room name</p></td>
-        </tr>
-
-    
-    </tbody>
-</table>
 
 
 
@@ -235,6 +225,17 @@
 
     
     </div>
+
+    
+        <h3 class="subsection-title">Extends</h3>
+
+        
+
+
+    <ul>
+        <li>EventEmitterExtra</li>
+    </ul>
+
 
     
 
@@ -256,7 +257,7 @@
 
     
 
-    <h4 class="name" id="add"><span class="type-signature"></span>add<span class="signature">(connection)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="reject"><span class="type-signature"></span>reject<span class="signature">(err<span class="signature-attributes">opt</span>)</span><span class="type-signature"></span></h4>
 
     
 
@@ -268,7 +269,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="server_room.js.html">server/room.js</a>, <a href="server_room.js.html#line27">line 27</a>
+        <a href="lib_message.js.html">lib/message.js</a>, <a href="lib_message.js.html#line90">line 90</a>
     </li></ul></dd>
     
 
@@ -308,140 +309,7 @@
 
 
 <div class="description">
-    <p>Adds a connection into room.</p>
-</div>
-
-
-
-
-
-
-
-
-
-
-
-    <h5>Parameters:</h5>
-    
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>connection</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type"><a href="ServerConnection.html">ServerConnection</a></span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"></td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
-            
-
-    
-
-    <h4 class="name" id="broadcast"><span class="type-signature"></span>broadcast<span class="signature">(eventName, payload<span class="signature-attributes">opt</span>)</span><span class="type-signature"></span></h4>
-
-    
-
-
-
-
-<dl class="details">
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="server_room.js.html">server/room.js</a>, <a href="server_room.js.html#line71">line 71</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-<div class="description">
-    <p>Broadcast a message to all connections in the room.</p>
+    <p>Rejects the message, with sending error response back to event source.</p>
 </div>
 
 
@@ -481,38 +349,7 @@
 
         <tr>
             
-                <td class="name"><code>eventName</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">string</span>
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last"></td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>payload</code></td>
+                <td class="name"><code>err</code></td>
             
 
             <td class="type">
@@ -565,7 +402,7 @@
 
     
 
-    <h4 class="name" id="getConnectionById"><span class="type-signature"></span>getConnectionById<span class="signature">(connectionId)</span><span class="type-signature"> &rarr; (nullable) {<a href="ServerConnection.html">ServerConnection</a>}</span></h4>
+    <h4 class="name" id="resolve"><span class="type-signature"></span>resolve<span class="signature">(payload<span class="signature-attributes">opt</span>)</span><span class="type-signature"></span></h4>
 
     
 
@@ -577,7 +414,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="server_room.js.html">server/room.js</a>, <a href="server_room.js.html#line46">line 46</a>
+        <a href="lib_message.js.html">lib/message.js</a>, <a href="lib_message.js.html#line59">line 59</a>
     </li></ul></dd>
     
 
@@ -617,7 +454,8 @@
 
 
 <div class="description">
-    <p>Gets a connection by id.</p>
+    <p>Resolves the message with sending a response back. If event source
+does not expecting a response, you don't need to call these methods.</p>
 </div>
 
 
@@ -643,258 +481,7 @@
         <th>Type</th>
 
         
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>connectionId</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">string</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"></td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h5>Returns:</h5>
-
-        
-
-
-<dl class="param-type">
-    <dt>
-        Type
-    </dt>
-    <dd>
-        
-<span class="param-type"><a href="ServerConnection.html">ServerConnection</a></span>
-
-
-    </dd>
-</dl>
-
-    
-
-
-        
-            
-
-    
-
-    <h4 class="name" id="getConnectionsCount"><span class="type-signature"></span>getConnectionsCount<span class="signature">()</span><span class="type-signature"> &rarr; {number}</span></h4>
-
-    
-
-
-
-
-<dl class="details">
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="server_room.js.html">server/room.js</a>, <a href="server_room.js.html#line55">line 55</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-<div class="description">
-    <p>Returns the total connection count in room.</p>
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h5>Returns:</h5>
-
-        
-
-
-<dl class="param-type">
-    <dt>
-        Type
-    </dt>
-    <dd>
-        
-<span class="param-type">number</span>
-
-
-    </dd>
-</dl>
-
-    
-
-
-        
-            
-
-    
-
-    <h4 class="name" id="remove"><span class="type-signature"></span>remove<span class="signature">(connection)</span><span class="type-signature"></span></h4>
-
-    
-
-
-
-
-<dl class="details">
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="server_room.js.html">server/room.js</a>, <a href="server_room.js.html#line36">line 36</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-<div class="description">
-    <p>Removes a connection from room.</p>
-</div>
-
-
-
-
-
-
-
-
-
-
-
-    <h5>Parameters:</h5>
-    
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
+        <th>Attributes</th>
         
 
         
@@ -908,18 +495,28 @@
 
         <tr>
             
-                <td class="name"><code>connection</code></td>
+                <td class="name"><code>payload</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type"><a href="ServerConnection.html">ServerConnection</a></span>
+<span class="param-type">any</span>
 
 
             
             </td>
 
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
             
 
             
