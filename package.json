@@ -1,13 +1,15 @@
 {
-  "name": "line",
+  "name": "line-socket",
   "version": "0.0.1",
   "main": "dist/index.js",
   "scripts": {
     "build": "webpack -p",
     "build:dev": "webpack",
+    "build:docs": "jsdoc ./src/**/* -c .jsdoc.json",
     "build:watch": "webpack -p -w",
+    "coverage": "istanbul cover ./node_modules/.bin/_mocha -- test/runner-coverage.js -R spec",
     "postinstall": "./scripts/symlink.sh",
-    "test": "mocha test/test.js"
+    "test": "mocha test/runner.js"
   },
   "keywords": [],
   "author": "",
@@ -22,7 +24,7 @@
   "homepage": "https://github.com/signalive/line#readme",
   "description": "",
   "dependencies": {
-    "event-emitter-extra": "0.1.1",
+    "event-emitter-extra": "0.1.2",
     "lodash": "4.16.6",
     "node-uuid": "1.4.7",
     "uws": "0.11.0"
@@ -33,10 +35,14 @@
     "babel-preset-es2015": "6.18.0",
     "chai": "3.5.0",
     "chai-as-promised": "6.0.0",
+    "docdash": "0.4.0",
+    "istanbul": "0.4.5",
+    "jsdoc": "3.4.3",
+    "minami": "1.1.1",
     "mocha": "3.1.2",
     "sinon": "1.17.6",
     "sinon-chai": "2.8.0",
-    "webpack": "1.13.3",
+    "webpack": "v2.1.0-beta.27",
     "webpack-node-externals": "1.5.4"
   }
 }
