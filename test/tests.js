@@ -1,3 +1,5 @@
+'use strict';
+
 describe('Line Tests', function() {
     let server;
     let connections;
