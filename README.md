@@ -19,9 +19,13 @@ Key Features
 
 Installation
 --------
-Using NPM
+Using yarn
+```
+yarn add line-socket
+```
+Using npm
 ```sh
-npm install line-socket
+npm install line-socket --save
 ```
 
 
