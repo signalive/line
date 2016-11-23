@@ -158,6 +158,34 @@ class Server extends EventEmitterExtra {
     broadcast(eventName, payload) {
         this.rooms.getRoom('/').broadcast(eventName, payload);
     }
+
+
+    /**
+     * Gets a room by name.
+     * @param {string} room Room name
+     * @returns {?ServerRoom}
+     */
+    getRoom(room) {
+        return this.rooms.getRoom(room);
+    }
+
+    /**
+     * Gets all the rooms of a connection.
+     * @param {ServerConnection} connection
+     * @returns {Array.<string>} Array of room names.
+     */
+    getRoomsOf(connection) {
+        return this.rooms.getRoomsOf(connection);
+    }
+
+
+    /**
+     * Remove a connection from all the rooms.
+     * @param {ServerConnection} connection
+     */
+    removeFromAllRooms(connection) {
+        this.rooms.removeFromAll(connection);
+    }
 }
 
 

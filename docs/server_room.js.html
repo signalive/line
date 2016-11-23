@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>server/room.js - Documentation</title>
+
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Client.html">Client</a><ul class='members'><li data-type='member'><a href="Client.html#.Events">Events</a></li><li data-type='member'><a href="Client.html#.States">States</a></li></ul><ul class='methods'><li data-type='method'><a href="Client.html#connect">connect</a></li><li data-type='method'><a href="Client.html#disconnect">disconnect</a></li><li data-type='method'><a href="Client.html#ping">ping</a></li><li data-type='method'><a href="Client.html#send">send</a></li><li data-type='method'><a href="Client.html#sendWithoutResponse">sendWithoutResponse</a></li></ul></li><li><a href="Server.html">Server</a><ul class='members'><li data-type='member'><a href="Server.html#.Events">Events</a></li></ul><ul class='methods'><li data-type='method'><a href="Server.html#broadcast">broadcast</a></li><li data-type='method'><a href="Server.html#getConnectionById">getConnectionById</a></li><li data-type='method'><a href="Server.html#getRoom">getRoom</a></li><li data-type='method'><a href="Server.html#getRoomsOf">getRoomsOf</a></li><li data-type='method'><a href="Server.html#removeFromAllRooms">removeFromAllRooms</a></li><li data-type='method'><a href="Server.html#start">start</a></li><li data-type='method'><a href="Server.html#stop">stop</a></li></ul></li><li><a href="ServerConnection.html">ServerConnection</a><ul class='members'><li data-type='member'><a href="ServerConnection.html#.Events">Events</a></li><li data-type='member'><a href="ServerConnection.html#.States">States</a></li></ul><ul class='methods'><li data-type='method'><a href="ServerConnection.html#close">close</a></li><li data-type='method'><a href="ServerConnection.html#getRooms">getRooms</a></li><li data-type='method'><a href="ServerConnection.html#joinRoom">joinRoom</a></li><li data-type='method'><a href="ServerConnection.html#leaveRoom">leaveRoom</a></li><li data-type='method'><a href="ServerConnection.html#ping">ping</a></li><li data-type='method'><a href="ServerConnection.html#send">send</a></li><li data-type='method'><a href="ServerConnection.html#sendWithoutResponse">sendWithoutResponse</a></li></ul></li><li><a href="ServerRoom.html">ServerRoom</a><ul class='methods'><li data-type='method'><a href="ServerRoom.html#add">add</a></li><li data-type='method'><a href="ServerRoom.html#broadcast">broadcast</a></li><li data-type='method'><a href="ServerRoom.html#getConnectionById">getConnectionById</a></li><li data-type='method'><a href="ServerRoom.html#getConnectionsCount">getConnectionsCount</a></li><li data-type='method'><a href="ServerRoom.html#remove">remove</a></li></ul></li></ul>
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">server/room.js</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>const forEach = require('lodash/forEach');
+const Message = require('../lib/message');
+
+
+/**
+ * Line room class.
+ *
+ * @private
+ * @class ServerRoom
+ * @param {string} name Room name
+ * @property {string} name
+ */
+class ServerRoom {
+    constructor(name, connections = {}) {
+        if (name == '/')
+            throw Error('Room "/" is reserved');
+
+        this.name = name;
+        this.connections = connections;
+    }
+
+
+    /**
+     * Adds a connection into room.
+     * @param {ServerConnection} connection
+     */
+    add(connection) {
+        this.connections[connection.id] = connection;
+    }
+
+
+    /**
+     * Removes a connection from room.
+     * @param {ServerConnection} connection
+     */
+    remove(connection) {
+        delete this.connections[connection.id];
+    }
+
+
+    /**
+     * Gets a connection by id.
+     * @param {string} connectionId
+     * @returns {?ServerConnection}
+     */
+    getConnectionById(connectionId) {
+        return this.connections[connectionId];
+    }
+
+
+    /**
+     * Returns the total connection count in room.
+     * @returns {number}
+     */
+    getConnectionsCount() {
+        return Object.keys(this.connections).length;
+    }
+
+    broadcast_(message) {
+        forEach(this.connections, connection => {
+            connection.send_(message)
+        });
+    }
+
+
+    /**
+     * Broadcast a message to all connections in the room.
+     * @param {string} eventName
+     * @param {any=} payload
+     */
+    broadcast(eventName, payload) {
+        const message = new Message({name: eventName, payload});
+        forEach(this.connections, (connection, index) => {
+            connection.send_(message)
+        });
+    }
+}
+
+
+module.exports = ServerRoom;
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.3</a> on Wed Nov 23 2016 15:21:35 GMT+0300 (+03) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/linenumber.js"></script>
+</body>
+</html>
