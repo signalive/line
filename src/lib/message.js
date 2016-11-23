@@ -1,13 +1,13 @@
-import isUndefined from 'lodash/isUndefined';
-import isObject from 'lodash/isObject';
-import isFunction from 'lodash/isFunction';
-import values from 'lodash/values';
-import {generateDummyId} from './utils';
-import EventEmitter from 'event-emitter-extra/dist/commonjs.modern';
+const isUndefined = require('lodash/isUndefined');
+const isObject = require('lodash/isObject');
+const isFunction = require('lodash/isFunction');
+const values = require('lodash/values');
+const {generateDummyId} = require('./utils');
+const EventEmitter = require('event-emitter-extra/dist/commonjs.modern');
 
 
 
-export default class Message extends EventEmitter {
+class Message extends EventEmitter {
     static parse(raw) {
         try {
             const data = JSON.parse(raw);
@@ -113,3 +113,6 @@ Message.Names = {
 
 
 Message.ReservedNames = values(Message.Names);
+
+
+module.exports = Message;

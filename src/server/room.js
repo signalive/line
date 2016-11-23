@@ -1,8 +1,8 @@
-import forEach from 'lodash/forEach';
-import Message from '../lib/message';
+const forEach = require('lodash/forEach');
+const Message = require('../lib/message');
 
 
-export default class Room {
+class Room {
     constructor(name, connections = {}) {
         this.name = name;
         this.connections = connections;
@@ -37,3 +37,6 @@ export default class Room {
         });
     }
 }
+
+
+module.exports = Room;

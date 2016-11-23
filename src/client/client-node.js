@@ -1,6 +1,5 @@
-import WebSocket from 'uws';
-import WebClient from './client-web';
-global.WebSocket = WebSocket;
+global.WebSocket = require('uws');
+const WebClient = require('./client-web');
 
 
 class NodeClient extends WebClient {

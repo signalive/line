@@ -1,8 +1,8 @@
-import Message from '../lib/message';
-import Utils from '../lib/utils';
-import EventEmitter from 'event-emitter-extra/dist/commonjs.modern';
-import Deferred from '../lib/deferred';
-import debounce from 'lodash/debounce';
+const Message = require('../lib/message');
+const Utils = require('../lib/utils');
+const EventEmitter = require('event-emitter-extra/dist/commonjs.modern');
+const Deferred = require('../lib/deferred');
+const debounce = require('lodash/debounce');
 
 
 class WebClient extends EventEmitter {

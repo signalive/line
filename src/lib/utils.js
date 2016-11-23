@@ -1,4 +1,4 @@
-import assign from 'lodash/assign';
+const assign = require('lodash/assign');
 
 
 function promiseDelay(ms) {

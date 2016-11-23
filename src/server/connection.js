@@ -1,12 +1,12 @@
-import Utils from '../lib/utils';
-import Message from '../lib/message';
-import EventEmitterExtra from 'event-emitter-extra/dist/commonjs.modern';
-import assign from 'lodash/assign';
-import forEach from 'lodash/forEach';
-import isObject from 'lodash/isObject';
-import debounce from 'lodash/debounce';
-import Deferred from '../lib/deferred';
-import * as uuid from 'node-uuid';
+const Utils = require('../lib/utils');
+const Message = require('../lib/message');
+const EventEmitterExtra = require('event-emitter-extra/dist/commonjs.modern');
+const assign = require('lodash/assign');
+const forEach = require('lodash/forEach');
+const isObject = require('lodash/isObject');
+const debounce = require('lodash/debounce');
+const Deferred = require('../lib/deferred');
+const uuid = require('node-uuid');
 
 
 /**

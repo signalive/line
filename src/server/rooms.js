@@ -1,10 +1,10 @@
-import filter from 'lodash/filter';
-import forEach from 'lodash/forEach';
-import map from 'lodash/map';
-import Room from './room';
+const filter = require('lodash/filter');
+const forEach = require('lodash/forEach');
+const map = require('lodash/map');
+const Room = require('./room');
 
 
-export default class Rooms {
+class Rooms {
     constructor() {
         this.rooms = {'/': new Room('/')};
     }
@@ -39,3 +39,6 @@ export default class Rooms {
         forEach(rooms, roomName => this.rooms[roomName].remove(connection));
     }
 }
+
+
+module.exports = Rooms;

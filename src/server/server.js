@@ -1,7 +1,7 @@
-import {Server as WebSocketServer} from 'uws';
-import Connection from './connection';
-import Rooms from './rooms';
-import EventEmitterExtra from 'event-emitter-extra/dist/commonjs.modern';
+const WebSocketServer = require('uws').Server;
+const Connection = require('./connection');
+const Rooms = require('./rooms');
+const EventEmitterExtra = require('event-emitter-extra/dist/commonjs.modern');
 
 
 /**
