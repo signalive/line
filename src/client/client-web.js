@@ -80,12 +80,12 @@ class WebClient extends EventEmitter {
     }
 
 
-    disconnect(code, reason) {
+    disconnect(code, reason, opt_retry) {
         switch (this.state) {
             case WebClient.States.ERROR:
             case WebClient.States.CONNECTED:
             case WebClient.States.CONNECTING:
-                this.reconnectDisabled_ = true;
+                this.reconnectDisabled_ = !opt_retry;
                 const deferred = this.disconnectDeferred_ = new Deferred({
                     handler: () => {
                         this.ws_.close(code, reason);
@@ -299,7 +299,7 @@ class WebClient extends EventEmitter {
         return Utils
             .retry(_ => this.send(Message.Names.PING), {maxCount: 3, initialDelay: 1, increaseFactor: 1})
             .catch(err => {
-                this.disconnect();
+                this.disconnect(500, 'Auto ping failed', true);
                 throw err;
             });
     }
