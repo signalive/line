@@ -147,13 +147,10 @@ class Client extends EventEmitterExtra {
             case Client.States.CONNECTED:
             case Client.States.CONNECTING:
                 this.reconnectDisabled_ = !opt_retry;
-                const deferred = this.disconnectDeferred_ = new Deferred({
-                    handler: () => {
-                        this.ws_.close(code, reason);
-                        this.state = Client.States.CLOSING;
-                    }
-                });
-                return deferred;
+                this.disconnectDeferred_ = new Deferred();
+                this.ws_.close(code, reason);
+                this.state = Client.States.CLOSING;
+                return this.disconnectDeferred_;
             case Client.States.CLOSED:
                 return Promise.reject(new Error('There is no connection to disconnect.'));
             case Client.States.CLOSING:

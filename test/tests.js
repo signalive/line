@@ -1,6 +1,8 @@
 'use strict';
 
 describe('Line Tests', function() {
+    this.timeout(10000);
+
     let server;
     let connections;
     let clients;
@@ -321,8 +323,6 @@ describe('Line Tests', function() {
 
 
     it('server should auto ping clients (3 times)', function() {
-        this.timeout(10000);
-
         const server = new Server({port: 3001, pingInterval: 1000});
         const clients = [
             new Client('ws://localhost:3001'),
