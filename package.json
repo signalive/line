@@ -2,6 +2,7 @@
   "name": "line-socket",
   "version": "0.0.1",
   "main": "dist/index.js",
+  "types": "index.d.ts",
   "scripts": {
     "build": "webpack -p",
     "build:dev": "webpack",
@@ -25,7 +26,8 @@
   "homepage": "https://github.com/signalive/line#readme",
   "description": "",
   "dependencies": {
-    "event-emitter-extra": "0.1.2",
+    "@types/promises-a-plus": "^0.0.27",
+    "event-emitter-extra": "0.1.4",
     "lodash": "4.16.6",
     "node-uuid": "1.4.7",
     "uws": "0.11.0"
