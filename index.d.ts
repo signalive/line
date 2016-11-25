@@ -1,3 +1,5 @@
+import EventEmitterExtra = require('event-emitter-extra');
+
 type LineClientState = -1 | 0 | 1 | 2 | 3;
 type LineClientEvent = '_connecting' | '_connecting_error' | '_connected' | '_closed' | '_error';
 

@@ -26,8 +26,8 @@
   "homepage": "https://github.com/signalive/line#readme",
   "description": "",
   "dependencies": {
-    "@types/promises-a-plus": "^0.0.27",
-    "event-emitter-extra": "0.1.4",
+    "@types/es6-promise": "0.0.32",
+    "event-emitter-extra": "0.1.5",
     "lodash": "4.16.6",
     "node-uuid": "1.4.7",
     "uws": "0.11.0"
