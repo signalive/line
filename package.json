@@ -2,7 +2,6 @@
   "name": "line-socket",
   "version": "0.0.1",
   "main": "dist/index.js",
-  "types": "index.d.ts",
   "scripts": {
     "build": "webpack -p",
     "build:dev": "webpack",

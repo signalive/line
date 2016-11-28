@@ -1,5 +1,7 @@
 node_modules
 coverage
 /client-node.js
+/client-node.d.ts
 /client-web.js
+/client-web.d.ts
 /server.js
