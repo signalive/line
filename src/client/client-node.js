@@ -25,6 +25,15 @@ class NodeClient extends WebClient {
             });
         });
     }
+
+
+    onError(err) {
+        super.onError(err);
+
+        /* Work-around for node; onClose not being called after error */
+        setTimeout(_ => this.onClose(new Error('Unknown error')));
+    }
+
 }
 
 
