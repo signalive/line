@@ -311,8 +311,7 @@ describe('Line Tests', function() {
                 response.should.deep.equal({welcome: 'bro'});
                 return clients[2].connect();
             })
-            // .should.be.rejectedWith(Error) // TODO: Support this
-            .should.be.rejected
+            .should.eventually.be.rejectedWith(Error, 'Sorry bro')
             // TODO: Rejected client should not retry to connect!
             .then(_ => Promise.all([
                 clients[0].disconnect(),
