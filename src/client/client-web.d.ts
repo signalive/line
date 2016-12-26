@@ -30,15 +30,15 @@ declare module 'line-socket/client-web' {
             handshakePayload?: any
         });
 
-        connect(): Promise<null>;
+        connect(): Promise<any>;
 
         disconnect(
             code?: number,
             reason?: any,
             retry?: boolean
-        ): Promise<null>;
+        ): Promise<any>;
 
-        ping(): Promise<null>;
+        ping(): Promise<any>;
 
         send(
             eventName: string,
@@ -48,7 +48,7 @@ declare module 'line-socket/client-web' {
         sendWithoutResponse(
             eventName: string,
             payload?: any
-        ): Promise<null>;
+        ): Promise<any>;
     }
 
     export = LineClient;
