@@ -56,7 +56,9 @@ class Client extends EventEmitterExtra {
 
         this.deferreds_ = {};
         this.connectDeferred_ = null;
+        this.connectError_ = null;
         this.disconnectDeferred_ = null;
+
 
         this.state = Client.States.READY;
 
@@ -103,6 +105,7 @@ class Client extends EventEmitterExtra {
                 return Promise.reject(new Error('Terminating an active connecting, try again later.'));
             case Client.States.CLOSED:
             case Client.States.READY:
+                this.connectError_ = null;
                 this.connectDeferred_ = new Deferred({
                     handler: () => {
                         this.state = Client.States.CONNECTING;
@@ -178,8 +181,9 @@ class Client extends EventEmitterExtra {
 
     disposeConnectionPromisses_() {
         if (this.connectDeferred_) {
-            this.connectDeferred_.reject();
+            this.connectDeferred_.reject(this.connectError_);
             this.connectDeferred_ = null;
+            this.connectError_ = null;
         }
 
         if (this.disconnectDeferred_) {
@@ -204,14 +208,15 @@ class Client extends EventEmitterExtra {
                 if (this.connectDeferred_) {
                     this.connectDeferred_.resolve(data.handshakePayload);
                     this.connectDeferred_ = null;
+                    this.connectError_ = null;
                 }
 
                 this.state = Client.States.CONNECTED;
                 this.emit(Client.Events.CONNECTED, data.handshakePayload);
             })
             .catch(err => {
-                console.log('Handshake failed', err);
-                return this.disconnect();
+                this.connectError_ = err;
+                return this.disconnect(401);
             })
             .catch(err => {
                 console.log('Could not disconnect after failed handshake', err);
@@ -228,8 +233,9 @@ class Client extends EventEmitterExtra {
         this.emit(Client.Events.CLOSED, e.code, e.reason);
 
         if (this.connectDeferred_) {
-            this.connectDeferred_.reject();
+            this.connectDeferred_.reject(this.connectError_);
             this.connectDeferred_ = null;
+            this.connectError_ = null;
         }
 
         if (this.disconnectDeferred_) {
