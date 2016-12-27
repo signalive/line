@@ -216,7 +216,7 @@ class Client extends EventEmitterExtra {
             })
             .catch(err => {
                 this.connectError_ = err;
-                return this.disconnect(401);
+                return this.disconnect();
             })
             .catch(err => {
                 console.log('Could not disconnect after failed handshake', err);
@@ -224,66 +224,66 @@ class Client extends EventEmitterExtra {
     }
 
 
-    onClose(e) {
+    onClose(code, err) {
         this.unBindEvents_();
         this.id = null;
         this.ws_ = null;
 
-        this.emit(Client.Events.CLOSED, e.code, e.reason);
+        this.emit(Client.Events.CLOSED, code, err);
 
-        if (this.state == Client.States.CLOSING) {
+        switch(this.state) {
+            case Client.States.CLOSING:
+                this.state = Client.States.CLOSED;
 
-            this.state = Client.States.CLOSED;
+                if (this.disconnectDeferred_) {
+                    this.disconnectDeferred_.resolve();
+                    this.disconnectDeferred_ = null;
+                }
 
-            if (this.disconnectDeferred_) {
-                this.disconnectDeferred_.resolve();
-                this.disconnectDeferred_ = null;
-            }
-
-            if (this.connectDeferred_) {
-                this.connectDeferred_.reject(new Error('Connection closed while connecting...'));
-                this.connectDeferred_ = null;
-                this.connectError_ = null;
-            }
-
-            if (!this.reconnect || this.retrying_ || this.reconnectDisabled_)
-                return;
-
-        } else if(this.state == Client.States.CONNECTING) {
-
-            this.state = Client.States.CLOSED;
-
-            if (this.disconnectDeferred_) {
-                this.disconnectDeferred_.reject(new Error('Already disconnected'));
-                this.disconnectDeferred_ = null;
-            }
-
-            if (!this.reconnect || this.retrying_ || this.reconnectDisabled_) {
                 if (this.connectDeferred_) {
-                    this.connectDeferred_.reject(e || this.connectError_);
+                    this.connectDeferred_.reject(this.connectError_ || new Error('Connection closed while connecting...'));
                     this.connectDeferred_ = null;
                     this.connectError_ = null;
                 }
-                return;
-            }
 
-        } else if (this.state == Client.States.CONNECTED) {
+                if (!this.reconnect || this.retrying_ || this.reconnectDisabled_)
+                    return;
 
-            this.state = Client.States.CLOSED;
+                break;
+            case Client.States.CONNECTING:
+                this.state = Client.States.CLOSED;
 
-            if (this.disconnectDeferred_) {
-                this.disconnectDeferred_.reject(new Error('Already disconnected'));
-                this.disconnectDeferred_ = null;
-            }
+                if (this.disconnectDeferred_) {
+                    this.disconnectDeferred_.reject(new Error('Already disconnected'));
+                    this.disconnectDeferred_ = null;
+                }
 
-            if (this.connectDeferred_) {
-                this.connectDeferred_.reject(new Error('Already connected'));
-                this.connectDeferred_ = null;
-                this.connectError_ = null;
-            }
+                if (!this.reconnect || this.retrying_ || this.reconnectDisabled_) {
+                    if (this.connectDeferred_) {
+                        this.connectDeferred_.reject(this.connectError_);
+                        this.connectDeferred_ = null;
+                        this.connectError_ = null;
+                    }
+                    return;
+                }
 
-            if (!this.reconnect || this.retrying_ || this.reconnectDisabled_)
-                return;
+                break;
+            default:
+                this.state = Client.States.CLOSED;
+
+                if (this.disconnectDeferred_) {
+                    this.disconnectDeferred_.reject(new Error('Already disconnected'));
+                    this.disconnectDeferred_ = null;
+                }
+
+                if (this.connectDeferred_) {
+                    this.connectDeferred_.reject(new Error('Already connected'));
+                    this.connectDeferred_ = null;
+                    this.connectError_ = null;
+                }
+
+                if (!this.reconnect || this.retrying_ || this.reconnectDisabled_)
+                    return;
         }
 
         this.retrying_ = true;
