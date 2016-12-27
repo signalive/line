@@ -18,9 +18,9 @@ server
     });
 
 setInterval(() => {
-    console.log('tick', server.rooms.getRoom('/').getConnectionsCount());
+    console.log('tick', server.rooms.root.getConnectionsCount());
 
-    server.rooms.getRoom('/').broadcast('tick', {foo: Date.now()});
+    server.rooms.root.broadcast('tick', {foo: Date.now()});
 }, 3000);
 
 server.on('connection', function(connection) {
