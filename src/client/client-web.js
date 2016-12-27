@@ -228,22 +228,63 @@ class Client extends EventEmitterExtra {
         this.unBindEvents_();
         this.id = null;
         this.ws_ = null;
-        this.state = Client.States.CLOSED;
 
         this.emit(Client.Events.CLOSED, e.code, e.reason);
 
-        if (this.connectDeferred_) {
-            this.connectDeferred_.reject(this.connectError_);
-            this.connectDeferred_ = null;
-            this.connectError_ = null;
-        }
+        if (this.state == Client.States.CLOSING) {
 
-        if (this.disconnectDeferred_) {
-            this.disconnectDeferred_.resolve();
-            this.disconnectDeferred_ = null;
-        }
+            this.state = Client.States.CLOSED;
 
-        if (!this.reconnect || this.retrying_ || this.reconnectDisabled_) return;
+            if (this.disconnectDeferred_) {
+                this.disconnectDeferred_.resolve();
+                this.disconnectDeferred_ = null;
+            }
+
+            if (this.connectDeferred_) {
+                this.connectDeferred_.reject(new Error('Connection closed while connecting...'));
+                this.connectDeferred_ = null;
+                this.connectError_ = null;
+            }
+
+            if (!this.reconnect || this.retrying_ || this.reconnectDisabled_)
+                return;
+
+        } else if(this.state == Client.States.CONNECTING) {
+
+            this.state = Client.States.CLOSED;
+
+            if (this.disconnectDeferred_) {
+                this.disconnectDeferred_.reject(new Error('Already disconnected'));
+                this.disconnectDeferred_ = null;
+            }
+
+            if (!this.reconnect || this.retrying_ || this.reconnectDisabled_) {
+                if (this.connectDeferred_) {
+                    this.connectDeferred_.reject(e || this.connectError_);
+                    this.connectDeferred_ = null;
+                    this.connectError_ = null;
+                }
+                return;
+            }
+
+        } else if (this.state == Client.States.CONNECTED) {
+
+            this.state = Client.States.CLOSED;
+
+            if (this.disconnectDeferred_) {
+                this.disconnectDeferred_.reject(new Error('Already disconnected'));
+                this.disconnectDeferred_ = null;
+            }
+
+            if (this.connectDeferred_) {
+                this.connectDeferred_.reject(new Error('Already connected'));
+                this.connectDeferred_ = null;
+                this.connectError_ = null;
+            }
+
+            if (!this.reconnect || this.retrying_ || this.reconnectDisabled_)
+                return;
+        }
 
         this.retrying_ = true;
         Utils
@@ -264,10 +305,7 @@ class Client extends EventEmitterExtra {
         const eventName = this.state == Client.States.CONNECTING ?
                 Client.Events.CONNECTING_ERROR : Client.Events.ERROR;
 
-        this.state = Client.States.CLOSED;
-
-        this.emit(eventName, err);
-        this.disposeConnectionPromisses_();
+        this.emit(eventName, err || new Error('Unknown error'));
     }
 
 
