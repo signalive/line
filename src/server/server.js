@@ -142,7 +142,7 @@ class Server extends EventEmitterExtra {
      *   connection.send('hello', {world: ''});
      */
     getConnectionById(id) {
-        return this.rooms.getRoom('/').getConnectionById(id);
+        return this.rooms.root.getConnectionById(id);
     }
 
 
@@ -156,7 +156,7 @@ class Server extends EventEmitterExtra {
      * server.broadcast('hello', {world: ''});
      */
     broadcast(eventName, payload) {
-        this.rooms.getRoom('/').broadcast(eventName, payload);
+        this.rooms.root.broadcast(eventName, payload);
     }
 
 

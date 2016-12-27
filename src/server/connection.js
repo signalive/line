@@ -112,7 +112,7 @@ class ServerConnection extends EventEmitterExtra {
             this
                 .send_(message.createResponse(null, responsePayload))
                 .then(() => {
-                    this.joinRoom('/');
+                    this.server.rooms.root.add(this);
                     this.emit(ServerConnection.Events.HANDSHAKE_OK);
                 })
                 .catch(() => {
@@ -181,6 +181,7 @@ class ServerConnection extends EventEmitterExtra {
             return;
 
         this.server.rooms.removeFromAll(this);
+        this.server.rooms.root.remove(this);
 
         forEach(this.deferreds_, (deferred) => {
             deferred.reject(new Error('Socket connection closed!'));

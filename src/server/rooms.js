@@ -6,7 +6,8 @@ const Room = require('./room');
 
 class Rooms {
     constructor() {
-        this.rooms = {'/': new Room('/')};
+        this.rooms = {};
+        this.root = new Room();
     }
 
     add(roomName, connection) {
@@ -22,7 +23,7 @@ class Rooms {
 
         this.rooms[roomName].remove(connection);
 
-        if (roomName != '/' && !this.rooms[roomName].getConnectionsCount())
+        if (!this.rooms[roomName].getConnectionsCount())
             delete this.rooms[roomName];
     }
 
