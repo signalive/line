@@ -1,4 +1,5 @@
 const forEach = require('lodash/forEach');
+const clone = require('lodash/clone');
 const Message = require('../lib/message');
 
 
@@ -42,6 +43,16 @@ class ServerRoom {
      */
     getConnectionById(connectionId) {
         return this.connections[connectionId];
+    }
+
+
+    /**
+     * Gets all connections in the room. Returns a object where keys are
+     * connection id and values are ServerConnection.
+     * @returns {{string: ServerConnection}}
+     */
+    getConnections() {
+        return clone(this.connections);
     }
 
 
