@@ -8,6 +8,7 @@ class NodeClient extends WebClient {
         this.ws_.on('error', this.onError.bind(this));
 
         this.ws_.on('close', (code, reason) => {
+            if (code == 0) code = 1005;
             this.onClose({code, reason});
         });
 
@@ -28,10 +29,12 @@ class NodeClient extends WebClient {
 
 
     onError(err) {
-        super.onError(err);
+        if (!err) err = {code: 1006, reason: ''};
+
+        super.onError();
 
         /* Work-around for node; onClose not being called after error */
-        setTimeout(_ => this.onClose(new Error('Unknown error')));
+        setTimeout(_ => this.onClose(err));
     }
 
 }
