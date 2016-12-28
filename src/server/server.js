@@ -130,6 +130,17 @@ class Server extends EventEmitterExtra {
 
 
     /**
+     * Returns a object where keys are connection id and values are ServerConnection.
+     *
+     * @returns {{string: ServerConnection}}
+     * @memberOf Server
+     */
+    getConnections() {
+        return this.rooms.root.getConnections();
+    }
+
+
+    /**
      * Gets a connection by id
      *
      * @param {string} id Unique connection id, which can be accessed at `connection.id`
