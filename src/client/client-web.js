@@ -216,6 +216,7 @@ class Client extends EventEmitterExtra {
             })
             .catch(err => {
                 this.connectError_ = err;
+                this.emit(Client.Events.ERROR, err);
                 return this.disconnect();
             })
             .catch(err => {
@@ -224,12 +225,12 @@ class Client extends EventEmitterExtra {
     }
 
 
-    onClose(code, err) {
+    onClose(err) {
         this.unBindEvents_();
         this.id = null;
         this.ws_ = null;
 
-        this.emit(Client.Events.CLOSED, code, err);
+        this.emit(Client.Events.CLOSED, err);
 
         switch(this.state) {
             case Client.States.CLOSING:
