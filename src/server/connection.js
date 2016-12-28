@@ -30,6 +30,7 @@ class ServerConnection extends EventEmitterExtra {
 
         this.deferreds_ = {};
         this.state = ServerConnection.States.OPEN;
+        this.handshakeResolved_ = false;
 
         this.socket.on('message', this.onMessage_.bind(this));
         this.socket.on('error', this.onError_.bind(this));
@@ -99,6 +100,8 @@ class ServerConnection extends EventEmitterExtra {
 
     onHandshake_(message) {
         message.once('resolved', payload => {
+            this.handshakeResolved_ = true;
+
             const responsePayload = {
                 handshakePayload: payload,
                 id: this.id,
@@ -190,6 +193,25 @@ class ServerConnection extends EventEmitterExtra {
 
         this.state = ServerConnection.States.CLOSE;
         this.emit(ServerConnection.Events.CLOSE, code, message);
+    }
+
+
+    /**
+     * Change connection's id, it's random by default. This method is helpful if you already have
+     * custom identification for your clients. You must do this before handshake resolved. If
+     * handshake is already resolved or there is conflict, this method will throw error.
+     *
+     * @param {string} newId New connection id
+     * @memberOf ServerConnection
+     */
+    setId(newId) {
+        if (this.handshakeResolved_)
+            throw new Error('Handshake already resolved, you cannot change connection id anymore');
+
+        if (this.server.getConnectionById(newId))
+            throw new Error(`Conflict! There is already connection with id newId`);
+
+        this.id = newId;
     }
 
 
