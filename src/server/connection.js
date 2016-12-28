@@ -88,8 +88,8 @@ class ServerConnection extends EventEmitterExtra {
         });
 
         message.once('rejected', err => {
-            if (isObject(err) && err instanceof Error && err.name == 'Error')
-               err = {message: err.message, name: 'Error'};
+            if (isObject(err) && err instanceof Error)
+               err = assign({message: err.message, name: err.name}, err);
             this.send_(message.createResponse(err));
             message.dispose();
         });
@@ -128,8 +128,8 @@ class ServerConnection extends EventEmitterExtra {
         });
 
         message.once('rejected', err => {
-            if (isObject(err) && err instanceof Error && err.name == 'Error')
-               err = {message: err.message, name: 'Error'};
+            if (isObject(err) && err instanceof Error)
+               err = assign({message: err.message, name: 'Error'}, err);
 
             this
                 .send_(message.createResponse(err))
