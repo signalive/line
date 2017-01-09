@@ -118,7 +118,7 @@ class ServerConnection extends EventEmitterExtra {
                     this.server.rooms.root.add(this);
                     this.emit(ServerConnection.Events.HANDSHAKE_OK);
                 })
-                .catch(() => {
+                .catch(err => {
                     console.log(`Handshake resolve response failed to send for ${this.id}.`);
                     this.onClose_(500, err);
                 })
