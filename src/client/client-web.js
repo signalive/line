@@ -196,7 +196,7 @@ class Client extends EventEmitterExtra {
     onOpen() {
         // this.updateState_();
         // this.emit('_open');
-        Utils.retry(_ => this.send(Message.Names.HANDSHAKE, this.options.handshakePayload), {maxCount: 3, initialDelay: 1, increaseFactor: 1})
+        this.send(Message.Names.HANDSHAKE, this.options.handshakePayload)
             .then(data => {
                 this.id = data.id;
                 this.serverTimeout_ = data.timeout;
@@ -437,8 +437,8 @@ class Client extends EventEmitterExtra {
      * @returns {Promise}
      */
     ping() {
-        return Utils
-            .retry(_ => this.send(Message.Names.PING), {maxCount: 3, initialDelay: 1, increaseFactor: 1})
+        return this
+            .send(Message.Names.PING)
             .catch(err => {
                 this.disconnect(500, 'Auto ping failed', true);
                 throw err;
