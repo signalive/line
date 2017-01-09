@@ -118,7 +118,7 @@ class ServerConnection extends EventEmitterExtra {
                     this.server.rooms.root.add(this);
                     this.emit(ServerConnection.Events.HANDSHAKE_OK);
                 })
-                .catch(() => {
+                .catch(err => {
                     console.log(`Handshake resolve response failed to send for ${this.id}.`);
                     this.onClose_(500, err);
                 })
@@ -327,8 +327,8 @@ class ServerConnection extends EventEmitterExtra {
      * @memberOf ServerConnection
      */
     ping() {
-        return Utils
-            .retry(_ => this.send(Message.Names.PING), {maxCount: 3, initialDelay: 1, increaseFactor: 1})
+        return this
+            .send(Message.Names.PING)
             .catch(err => {
                 this.close(410, new Error('Ping failed, dead connection'));
                 throw err;
