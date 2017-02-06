@@ -15,6 +15,7 @@ const isBoolean = require('lodash/isBoolean');
  * @param {string=} url Server url, default: `ws://localhost`.
  * @param {Object=} options Options object.
  * @param {boolean=} options.reconnect Try to reconnect server after unexpected disconnection, default `true`.
+ * @param {boolean=} options.keepUptime Keeps uptime, default `false`.
  * @param {any=} options.handshakePayload Handshake payload to be sent to server.
  * @property {string} url Server url
  * @property {string} id Unique connection id assigned by the server
@@ -61,6 +62,11 @@ class Client extends EventEmitterExtra {
 
 
         this.state = Client.States.READY;
+
+        this.uptimeInterval_ = 5000;
+        this.uptimeBuffer_ = [];
+        this.uptimeBufferLength_ = 5 * 60000 / this.uptimeInterval_;
+        this.uptimeCheck_ = options.keepUptime ? setInterval(this.uptimeTick_.bind(this), this.uptimeInterval_) : null;
 
         this.autoPing_ = this.pingInterval > 0 ?
             debounce(() => {
@@ -443,6 +449,28 @@ class Client extends EventEmitterExtra {
                 this.disconnect(500, 'Auto ping failed', true);
                 throw err;
             });
+    }
+
+
+    uptimeTick_() {
+        this.uptimeBuffer_.push(this.state == Client.States.CONNECTED);
+
+        if (this.uptimeBuffer_.length > this.uptimeBufferLength_) {
+            this.uptimeBuffer_.splice(0, this.uptimeBufferLength_ - this.uptimeBuffer_.length);
+        }
+    }
+
+
+    /**
+     * Calculates (connection) uptime for last 5 minutes with 5 seconds interval.
+     * Returns a number between 0 and 1. If `options.keepUptime` is false, this method
+     * returns null.
+     * @returns {number?}
+     */
+    getUptime() {
+        if (!this.options.keepUptime) return null;
+        if (this.uptimeBuffer_.length == 0) return 0;
+        return this.uptimeBuffer_.filter(val => val).length / this.uptimeBuffer_.length;
     }
 }
 
