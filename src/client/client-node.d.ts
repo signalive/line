@@ -27,7 +27,8 @@ declare module 'line-socket/client-node' {
 
         constructor(url: string, options?: {
             reconnect?: boolean,
-            handshakePayload?: any
+            handshakePayload?: any,
+            keepUptime?: boolean
         });
 
         connect(): Promise<any>;
@@ -49,6 +50,10 @@ declare module 'line-socket/client-node' {
             eventName: string,
             payload?: any
         ): Promise<any>;
+
+        getUptime(): null|number;
+
+        dispose(): void;
     }
 
     export = LineClient;
