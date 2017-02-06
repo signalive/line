@@ -472,6 +472,14 @@ class Client extends EventEmitterExtra {
         if (this.uptimeBuffer_.length == 0) return 0;
         return this.uptimeBuffer_.filter(val => val).length / this.uptimeBuffer_.length;
     }
+
+
+    dispose() {
+        this.removeAllListeners();
+        // TODO: Maybe reject all deferreds?
+        this.uptimeBuffer_ = [];
+        if (this.uptimeCheck_) clearInterval(this.uptimeCheck_);
+    }
 }
 
 
