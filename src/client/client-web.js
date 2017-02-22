@@ -178,10 +178,10 @@ class Client extends EventEmitterExtra {
 
     unBindEvents_() {
         if (!this.ws_) return;
-        delete this.ws_.onopen;
-        delete this.ws_.onclose;
-        delete this.ws_.onerror;
-        delete this.ws_.onmessage;
+        this.ws_.onopen = function() {};
+        this.ws_.onclose = function() {};
+        this.ws_.onerror = function() {};
+        this.ws_.onmessage = function() {};
     }
 
 
