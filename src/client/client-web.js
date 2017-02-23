@@ -5,6 +5,8 @@ const Deferred = require('../lib/deferred');
 const debounce = require('lodash/debounce');
 const isObject = require('lodash/isObject');
 const isBoolean = require('lodash/isBoolean');
+const debug = require('debug')('line:client-web');
+
 
 
 /**
@@ -119,6 +121,7 @@ class Client extends EventEmitterExtra {
                         this.reconnectDisabled_ = false;
 
                         setTimeout(_ => {
+                            debug(`Connecting to "${this.url}" ...`);
                             this.ws_ = new WebSocket(this.url);
                             this.bindEvents_();
                         }, 0);
@@ -155,6 +158,7 @@ class Client extends EventEmitterExtra {
             case Client.States.ERROR:
             case Client.States.CONNECTED:
             case Client.States.CONNECTING:
+                debug('Disconnecting...');
                 this.reconnectDisabled_ = !opt_retry;
                 this.disconnectDeferred_ = new Deferred();
                 this.ws_.close(code, reason);
@@ -169,6 +173,7 @@ class Client extends EventEmitterExtra {
 
 
     bindEvents_() {
+        debug('Binding native event handlers.');
         this.ws_.onopen = this.onOpen.bind(this);
         this.ws_.onclose = this.onClose.bind(this);
         this.ws_.onerror = this.onError.bind(this);
@@ -186,13 +191,16 @@ class Client extends EventEmitterExtra {
 
 
     disposeConnectionPromisses_() {
+        debug('Disposing connection promisses...');
         if (this.connectDeferred_) {
+            debug('Rejecting connect promise...');
             this.connectDeferred_.reject(this.connectError_);
             this.connectDeferred_ = null;
             this.connectError_ = null;
         }
 
         if (this.disconnectDeferred_) {
+            debug('Rejecting disconnect promise...');
             this.disconnectDeferred_.reject();
             this.disconnectDeferred_ = null;
         }
@@ -200,10 +208,12 @@ class Client extends EventEmitterExtra {
 
 
     onOpen() {
-        // this.updateState_();
-        // this.emit('_open');
+        debug('Native "open" event received.');
+        debug(`State=${this.state}`);
+        debug('Sending handshake data...');
         this.send(Message.Names.HANDSHAKE, this.options.handshakePayload)
             .then(data => {
+                debug('Handshake successful.');
                 this.id = data.id;
                 this.serverTimeout_ = data.timeout;
                 this.maxReconnectDelay = data.maxReconnectDelay;
@@ -212,30 +222,38 @@ class Client extends EventEmitterExtra {
                 this.pingInterval = data.pingInterval;
 
                 if (this.connectDeferred_) {
+                    debug('Resolving connect promise...');
                     this.connectDeferred_.resolve(data.handshakePayload);
                     this.connectDeferred_ = null;
                     this.connectError_ = null;
                 }
 
                 this.state = Client.States.CONNECTED;
+                debug('Emitting "connected" event...');
                 this.emit(Client.Events.CONNECTED, data.handshakePayload);
             })
             .catch(err => {
+                debug('Handshake failed.');
                 this.connectError_ = err;
+                debug('Emitting "error" event...');
                 this.emit(Client.Events.ERROR, err);
                 return this.disconnect();
             })
             .catch(err => {
+                debug('Could not disconnect after handshake failure.');
                 console.log('Could not disconnect after failed handshake', err);
             });
     }
 
 
     onClose(err) {
+        debug('Native "close" event reveived.');
+        debug(`State=${this.state}`);
         this.unBindEvents_();
         this.id = null;
         this.ws_ = null;
 
+        debug('Emitting "closed" event...');
         this.emit(Client.Events.CLOSED, err);
 
         switch(this.state) {
@@ -243,11 +261,13 @@ class Client extends EventEmitterExtra {
                 this.state = Client.States.CLOSED;
 
                 if (this.disconnectDeferred_) {
+                    debug('Resolving disconnect promise...');
                     this.disconnectDeferred_.resolve();
                     this.disconnectDeferred_ = null;
                 }
 
                 if (this.connectDeferred_) {
+                    debug('Rejecting connect promise...');
                     this.connectDeferred_.reject(this.connectError_ || new Error('Connection closed while connecting...'));
                     this.connectDeferred_ = null;
                     this.connectError_ = null;
@@ -261,12 +281,14 @@ class Client extends EventEmitterExtra {
                 this.state = Client.States.CLOSED;
 
                 if (this.disconnectDeferred_) {
+                    debug('Rejecting disconnect promise...');
                     this.disconnectDeferred_.reject(new Error('Already disconnected'));
                     this.disconnectDeferred_ = null;
                 }
 
                 if (!this.reconnect || this.retrying_ || this.reconnectDisabled_) {
                     if (this.connectDeferred_) {
+                        debug('Rejecting connect promise...');
                         this.connectDeferred_.reject(this.connectError_);
                         this.connectDeferred_ = null;
                         this.connectError_ = null;
@@ -279,11 +301,13 @@ class Client extends EventEmitterExtra {
                 this.state = Client.States.CLOSED;
 
                 if (this.disconnectDeferred_) {
+                    debug('Rejecting disconnect promise...');
                     this.disconnectDeferred_.reject(new Error('Already disconnected'));
                     this.disconnectDeferred_ = null;
                 }
 
                 if (this.connectDeferred_) {
+                    debug('Rejecting connect promise...');
                     this.connectDeferred_.reject(new Error('Already connected'));
                     this.connectDeferred_ = null;
                     this.connectError_ = null;
@@ -292,7 +316,7 @@ class Client extends EventEmitterExtra {
                 if (!this.reconnect || this.retrying_ || this.reconnectDisabled_)
                     return;
         }
-
+        debug('Retrying to connect...');
         this.retrying_ = true;
         Utils
             .retry(
@@ -303,12 +327,16 @@ class Client extends EventEmitterExtra {
                     increaseFactor: this.reconnectIncrementFactor
                 })
             .then(_ => {
+                debug('Retry successful.');
                 this.retrying_ = false;
             });
     }
 
 
     onError(err) {
+        debug('Native "error" event reveived.');
+        debug(`State=${this.state}`);
+
         const eventName = this.state == Client.States.CONNECTING ?
                 Client.Events.CONNECTING_ERROR : Client.Events.ERROR;
 
@@ -317,13 +345,16 @@ class Client extends EventEmitterExtra {
 
 
     onMessage(e) {
-        const message = Message.parse(e.data);
+        debug('Native "message" event reveived.');
 
+        const message = Message.parse(e.data);
         this.autoPing_();
 
         // Message without response (no id fields)
-        if (!message.id && Message.ReservedNames.indexOf(message.name) == -1)
+        if (!message.id && Message.ReservedNames.indexOf(message.name) == -1) {
+            debug(`Message without response: name="${message.name}"`);
             return this.emit(message.name, message);
+        }
 
         // Ping
         if (message.name == Message.Names.PING) {
@@ -333,7 +364,7 @@ class Client extends EventEmitterExtra {
         // Message response
         if (message.name == Message.Names.RESPONSE && this.deferreds_[message.id]) {
             const deferred = this.deferreds_[message.id];
-
+            debug(`Message response: name="${message.name}" id="${message.id}"`);
             if (message.err) {
                 const err = Object.assign(new Error(), message.err);
                 deferred.reject(err);
@@ -345,8 +376,10 @@ class Client extends EventEmitterExtra {
             return;
         }
 
+        debug(`Message with response: name="${message.name}" id="${message.id}"`);
         // Message with response
         message.once('resolved', payload => {
+            debug(`Client resolving: name="${message.name}" id="${message.id}"`);
             this.send_(message.createResponse(null, payload));
             message.dispose();
         });
@@ -354,6 +387,7 @@ class Client extends EventEmitterExtra {
         message.once('rejected', err => {
             if (isObject(err) && err instanceof Error && err.name == 'Error')
                err = {message: err.message, name: 'Error'};
+            debug(`Client rejecting: name="${message.name}" id="${message.id}"`);
             this.send_(message.createResponse(err));
             message.dispose();
         });
@@ -363,6 +397,7 @@ class Client extends EventEmitterExtra {
 
 
     onPing_(message) {
+        debug('Ping received');
         this
             .send_(message.createResponse(null, 'pong'))
             .catch(err => {
@@ -443,6 +478,7 @@ class Client extends EventEmitterExtra {
      * @returns {Promise}
      */
     ping() {
+        debug('Pinging...');
         return this
             .send(Message.Names.PING)
             .catch(err => {
@@ -453,6 +489,7 @@ class Client extends EventEmitterExtra {
 
 
     uptimeTick_() {
+        debug('•Uptime Tick•');
         this.uptimeBuffer_.push(this.state == Client.States.CONNECTED);
 
         if (this.uptimeBuffer_.length > this.uptimeBufferLength_) {
@@ -475,6 +512,7 @@ class Client extends EventEmitterExtra {
 
 
     dispose() {
+        debug('Disposing...');
         this.removeAllListeners();
         // TODO: Maybe reject all deferreds?
         this.uptimeBuffer_ = [];
