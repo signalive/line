@@ -1,2 +1,1481 @@
-module.exports=function(e){function n(o){if(t[o])return t[o].exports;var r=t[o]={i:o,l:!1,exports:{}};return e[o].call(r.exports,r,r.exports,n),r.l=!0,r.exports}var t={};return n.m=e,n.c=t,n.i=function(e){return e},n.d=function(e,n,t){Object.defineProperty(e,n,{configurable:!1,enumerable:!0,get:t})},n.n=function(e){var t=e&&e.__esModule?function(){return e.default}:function(){return e};return n.d(t,"a",t),t},n.o=function(e,n){return Object.prototype.hasOwnProperty.call(e,n)},n.p="",n(n.s=19)}([function(e,n){e.exports=require("event-emitter-extra/dist/commonjs.modern")},function(e,n){e.exports=require("lodash/forEach")},function(e,n,t){"use strict";function o(e,n){if(!(e instanceof n))throw new TypeError("Cannot call a class as a function")}function r(e,n){if(!e)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!n||"object"!=typeof n&&"function"!=typeof n?e:n}function i(e,n){if("function"!=typeof n&&null!==n)throw new TypeError("Super expression must either be null or a function, not "+typeof n);e.prototype=Object.create(n&&n.prototype,{constructor:{value:e,enumerable:!1,writable:!0,configurable:!0}}),n&&(Object.setPrototypeOf?Object.setPrototypeOf(e,n):e.__proto__=n)}var s=function(){function e(e,n){for(var t=0;t<n.length;t++){var o=n[t];o.enumerable=o.enumerable||!1,o.configurable=!0,"value"in o&&(o.writable=!0),Object.defineProperty(e,o.key,o)}}return function(n,t,o){return t&&e(n.prototype,t),o&&e(n,o),n}}(),a=t(15),u=t(5),c=t(14),l=t(17),f=t(3),h=f.generateDummyId,d=t(0),v=function(e){function n(e){var t=e.name,i=e.payload,s=e.id,a=e.err;o(this,n);var u=r(this,(n.__proto__||Object.getPrototypeOf(n)).call(this));return u.name=t,u.payload=i,u.id=s,u.err=a,u.isResponded_=!1,u}return i(n,e),s(n,null,[{key:"parse",value:function(e){try{var t=JSON.parse(e);return new n({name:t.n,payload:t.p,err:t.e,id:t.i})}catch(e){throw new Error("Could not parse message.")}}}]),s(n,[{key:"setId",value:function(){var e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:h();return this.id=e,e}},{key:"createResponse",value:function(e,t){return new n({name:"_r",payload:t,err:e,id:this.id})}},{key:"resolve",value:function(e){var n=this;return a(this.id)?console.warn("[line] A message without an id cannot be resolved."):this.isResponded_?console.warn("[line] This message has already been ended."):u(e)&&c(e.then)?void e.then(function(t){n.isResponded_=!0,n.emit("resolved",e)}).catch(function(e){n.isResponded_=!0,n.emit("rejected",e)}):(this.isResponded_=!0,void this.emit("resolved",e))}},{key:"reject",value:function(e){return a(this.id)?console.warn("[line] A message without an id cannot be rejected."):this.isResponded_?console.warn("[line] This message has already been ended."):(this.isResponded_=!0,void this.emit("rejected",e))}},{key:"toString",value:function(){try{var e={n:this.name};return a(this.payload)||(e.p=this.payload),a(this.id)||(e.i=this.id),a(this.err)||(e.e=this.err),JSON.stringify(e)}catch(e){throw new Error("Could not stringify message.")}}},{key:"dispose",value:function(){var e=this,n=this.eventNames();n.forEach(function(n){return e.removeAllListeners(n)})}}]),n}(d);v.Names={RESPONSE:"_r",HANDSHAKE:"_h",PING:"_p"},v.ReservedNames=l(v.Names),e.exports=v},function(e,n,t){"use strict";function o(e){return new Promise(function(n){return setTimeout(function(e){return n()},e)})}function r(e){var n=arguments.length>1&&void 0!==arguments[1]?arguments[1]:{},t={maxDelay:160,maxCount:0,initialDelay:3,increaseFactor:2};n=s(t,n);var r=void 0,i=1,a=n.initialDelay,u=function t(){return e().catch(function(e){if(i++,a*=n.increaseFactor,0!=n.maxCount&&i>n.maxCount)throw r&&clearTimeout(r),e;return o(1e3*a/2).then(function(e){return t()})})};return u()}function i(){var e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:4;return("0000"+(Math.random()*Math.pow(36,e)<<0).toString(36)).slice(-e)}var s=t(4);e.exports={promiseDelay:o,retry:r,generateDummyId:i}},function(e,n){e.exports=require("lodash/assign")},function(e,n){e.exports=require("lodash/isObject")},function(e,n,t){"use strict";function o(e,n){if(!(e instanceof n))throw new TypeError("Cannot call a class as a function")}function r(e,n){if(!e)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!n||"object"!=typeof n&&"function"!=typeof n?e:n}function i(e,n){if("function"!=typeof n&&null!==n)throw new TypeError("Super expression must either be null or a function, not "+typeof n);e.prototype=Object.create(n&&n.prototype,{constructor:{value:e,enumerable:!1,writable:!0,configurable:!0}}),n&&(Object.setPrototypeOf?Object.setPrototypeOf(e,n):e.__proto__=n)}var s=function(){function e(e,n){for(var t=0;t<n.length;t++){var o=n[t];o.enumerable=o.enumerable||!1,o.configurable=!0,"value"in o&&(o.writable=!0),Object.defineProperty(e,o.key,o)}}return function(n,t,o){return t&&e(n.prototype,t),o&&e(n,o),n}}(),a=(t(3),t(2)),u=t(0),c=t(4),l=t(1),f=t(5),h=t(12),d=t(9),v=t(18),p=function(e){function n(e,t){o(this,n);var i=r(this,(n.__proto__||Object.getPrototypeOf(n)).call(this));return i.id=v.v4(),i.socket=e,i.server=t,i.deferreds_={},i.state=n.States.OPEN,i.handshakeResolved_=!1,i.socket.on("message",i.onMessage_.bind(i)),i.socket.on("error",i.onError_.bind(i)),i.socket.on("close",i.onClose_.bind(i)),i.autoPing_=t.options.pingInterval>0?h(function(){i.state==n.States.OPEN&&i.ping().then(function(){t.options.pingInterval>0&&i.state==n.States.OPEN&&i.autoPing_()}).catch(function(){})},t.options.pingInterval):function(){},i}return i(n,e),s(n,[{key:"onMessage_",value:function(e,t){var o=this,r=a.parse(e);return this.autoPing_(),this.emit(n.Events.MESSAGE,e),r.id||a.ReservedNames.indexOf(r.name)!=-1?r.name==a.Names.HANDSHAKE?this.onHandshake_(r):r.name==a.Names.PING?this.onPing_(r):r.name==a.Names.RESPONSE&&this.deferreds_[r.id]?this.onResponse_(r):(r.once("resolved",function(e){o.send_(r.createResponse(null,e)),r.dispose()}),r.once("rejected",function(e){f(e)&&e instanceof Error&&(e=c({message:e.message,name:e.name},e)),o.send_(r.createResponse(e)),r.dispose()}),void this.emit(r.name,r)):this.emit(r.name,r)}},{key:"onHandshake_",value:function(e){var t=this;e.once("resolved",function(o){t.handshakeResolved_=!0;var r={handshakePayload:o,id:t.id,timeout:t.server.options.timeout,maxReconnectDelay:t.server.options.maxReconnectDelay,initialReconnectDelay:t.server.options.initialReconnectDelay,reconnectIncrementFactor:t.server.options.reconnectIncrementFactor,pingInterval:t.server.options.pingInterval};t.send_(e.createResponse(null,r)).then(function(){t.server.rooms.root.add(t),t.emit(n.Events.HANDSHAKE_OK)}).catch(function(e){console.log("Handshake resolve response failed to send for "+t.id+"."),t.onClose_(500,e)}).then(function(){e.dispose()})}),e.once("rejected",function(n){f(n)&&n instanceof Error&&(n=c({message:n.message,name:"Error"},n)),t.send_(e.createResponse(n)).catch(function(e){console.log("Handshake reject response failed to send for "+t.id+".")}).then(function(){t.onClose_(500,n),e.dispose()})});var o=this.server.emit("handshake",this,e);o||e.resolve()}},{key:"onResponse_",value:function(e){var n=this.deferreds_[e.id];if(e.err){var t=c(new Error,e.err);n.reject(t)}else n.resolve(e.payload);delete this.deferreds_[e.id]}},{key:"onPing_",value:function(e){this.send_(e.createResponse(null,"pong")).catch(function(e){console.log("Ping responce failed to send",e)})}},{key:"onError_",value:function(e){this.emit(n.Events.ERROR,e),this.onClose_(500,e)}},{key:"onClose_",value:function(e,t){this.state!=n.States.CLOSE&&(this.server.rooms.removeFromAll(this),this.server.rooms.root.remove(this),l(this.deferreds_,function(e){e.reject(new Error("Socket connection closed!"))}),this.deferreds_={},this.state=n.States.CLOSE,this.emit(n.Events.CLOSE,e,t))}},{key:"setId",value:function(e){if(this.handshakeResolved_)throw new Error("Handshake already resolved, you cannot change connection id anymore");if(this.server.getConnectionById(e))throw new Error("Conflict! There is already connection with id newId");this.id=e}},{key:"joinRoom",value:function(e){this.server.rooms.add(e,this)}},{key:"leaveRoom",value:function(e){this.server.rooms.remove(e,this)}},{key:"getRooms",value:function(){return this.server.rooms.getRoomsOf(this)}},{key:"send",value:function(e,n){var t=this,o=new a({name:e,payload:n});return o.setId(),this.send_(o).then(function(e){var n=t.deferreds_[o.id]=new d({onExpire:function(){delete t.deferreds_[o.id]},timeout:t.server.options.timeout});return n})}},{key:"sendWithoutResponse",value:function(e,n){var t=new a({name:e,payload:n});return this.send_(t)}},{key:"send_",value:function(e){var n=this;return new Promise(function(t,o){n.socket.send(e.toString(),function(e){return e?o(e):void t()})})}},{key:"ping",value:function(){var e=this;return this.send(a.Names.PING).catch(function(n){throw e.close(410,new Error("Ping failed, dead connection")),n})}},{key:"close",value:function(e,n){var t=this;return new Promise(function(o){t.socket.close(e,n),o()})}}]),n}(u);p.States={OPEN:"open",CLOSE:"close"},p.Events={MESSAGE:"_message",HANDSHAKE_OK:"_handshakeOk",ERROR:"_error",CLOSE:"_close"},e.exports=p},function(e,n,t){"use strict";function o(e,n){if(!(e instanceof n))throw new TypeError("Cannot call a class as a function")}var r=function(){function e(e,n){for(var t=0;t<n.length;t++){var o=n[t];o.enumerable=o.enumerable||!1,o.configurable=!0,"value"in o&&(o.writable=!0),Object.defineProperty(e,o.key,o)}}return function(n,t,o){return t&&e(n.prototype,t),o&&e(n,o),n}}(),i=t(13),s=t(1),a=t(16),u=t(10),c=function(){function e(){o(this,e),this.rooms={},this.root=new u}return r(e,[{key:"add",value:function(e,n){this.rooms[e]||(this.rooms[e]=new u(e)),this.rooms[e].add(n)}},{key:"remove",value:function(e,n){this.rooms[e]&&(this.rooms[e].remove(n),this.rooms[e].getConnectionsCount()||delete this.rooms[e])}},{key:"getRoomsOf",value:function(e){return a(i(this.rooms,function(n){return n.getConnectionById(e.id)}),"name")}},{key:"getRoom",value:function(e){return this.rooms[e]}},{key:"removeFromAll",value:function(e){var n=this,t=this.getRoomsOf(e);s(t,function(t){return n.rooms[t].remove(e)})}}]),e}();e.exports=c},function(e,n){e.exports=require("uws")},function(e,n){"use strict";function t(e,n){if(!(e instanceof n))throw new TypeError("Cannot call a class as a function")}var o=function(){function e(e,n){for(var t=0;t<n.length;t++){var o=n[t];o.enumerable=o.enumerable||!1,o.configurable=!0,"value"in o&&(o.writable=!0),Object.defineProperty(e,o.key,o)}}return function(n,t,o){return t&&e(n.prototype,t),o&&e(n,o),n}}(),r=function(){function e(){var n=this,o=arguments.length>0&&void 0!==arguments[0]?arguments[0]:{},r=o.handler,i=void 0===r?function(){}:r,s=o.onExpire,a=void 0===s?function(){}:s,u=o.timeout,c=void 0===u?0:u;t(this,e),this.resolve_=null,this.reject_=null,this.timeout_=null,this.onExpire_=a,this.isFinished_=!1,this.promise=new Promise(function(e,t){n.resolve_=e,n.reject_=t;try{i(n)}catch(e){n.reject(e)}}),c>0&&(this.timeout_=setTimeout(this.expire.bind(this),c))}return o(e,[{key:"resolve",value:function(e){this.isFinished_||(this.isFinished_=!0,this.clearTimeout_(),this.resolve_(e))}},{key:"reject",value:function(e){this.isFinished_||(this.isFinished_=!0,this.clearTimeout_(),this.reject_(e))}},{key:"expire",value:function(){this.isFinished_=!0,this.clearTimeout_(),this.onExpire_(),this.reject_(new Error("Timeout exceed"))}},{key:"then",value:function(){for(var e=arguments.length,n=Array(e),t=0;t<e;t++)n[t]=arguments[t];return this.promise.then.apply(this.promise,n)}},{key:"catch",value:function(){for(var e=arguments.length,n=Array(e),t=0;t<e;t++)n[t]=arguments[t];return this.promise.catch.apply(this.promise,n)}},{key:"clearTimeout_",value:function(){this.timeout_&&(clearTimeout(this.timeout_),this.timeout_=null)}}]),e}();e.exports=r},function(e,n,t){"use strict";function o(e,n){if(!(e instanceof n))throw new TypeError("Cannot call a class as a function")}var r=function(){function e(e,n){for(var t=0;t<n.length;t++){var o=n[t];o.enumerable=o.enumerable||!1,o.configurable=!0,"value"in o&&(o.writable=!0),Object.defineProperty(e,o.key,o)}}return function(n,t,o){return t&&e(n.prototype,t),o&&e(n,o),n}}(),i=t(1),s=t(11),a=t(2),u=function(){function e(n){var t=arguments.length>1&&void 0!==arguments[1]?arguments[1]:{};o(this,e),this.name=n,this.connections=t}return r(e,[{key:"add",value:function(e){this.connections[e.id]=e}},{key:"remove",value:function(e){delete this.connections[e.id]}},{key:"getConnectionById",value:function(e){return this.connections[e]}},{key:"getConnections",value:function(){return s(this.connections)}},{key:"getConnectionsCount",value:function(){return Object.keys(this.connections).length}},{key:"broadcast_",value:function(e){i(this.connections,function(n){n.send_(e)})}},{key:"broadcast",value:function(e,n){var t=new a({name:e,payload:n});i(this.connections,function(e,n){e.send_(t)})}}]),e}();e.exports=u},function(e,n){e.exports=require("lodash/clone")},function(e,n){e.exports=require("lodash/debounce")},function(e,n){e.exports=require("lodash/filter")},function(e,n){e.exports=require("lodash/isFunction")},function(e,n){e.exports=require("lodash/isUndefined")},function(e,n){e.exports=require("lodash/map")},function(e,n){e.exports=require("lodash/values")},function(e,n){e.exports=require("node-uuid")},function(e,n,t){"use strict";function o(e,n){if(!(e instanceof n))throw new TypeError("Cannot call a class as a function")}function r(e,n){if(!e)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!n||"object"!=typeof n&&"function"!=typeof n?e:n}function i(e,n){if("function"!=typeof n&&null!==n)throw new TypeError("Super expression must either be null or a function, not "+typeof n);e.prototype=Object.create(n&&n.prototype,{constructor:{value:e,enumerable:!1,writable:!0,configurable:!0}}),n&&(Object.setPrototypeOf?Object.setPrototypeOf(e,n):e.__proto__=n)}var s=function(){function e(e,n){for(var t=0;t<n.length;t++){var o=n[t];o.enumerable=o.enumerable||!1,o.configurable=!0,"value"in o&&(o.writable=!0),Object.defineProperty(e,o.key,o)}}return function(n,t,o){return t&&e(n.prototype,t),o&&e(n,o),n}}(),a=t(8).Server,u=t(6),c=t(7),l=t(0),f=function(e){function n(){var e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:{};o(this,n);var t=r(this,(n.__proto__||Object.getPrototypeOf(n)).call(this));return t.rooms=new c,t.options=Object.assign({timeout:3e4,maxReconnectDelay:60,initialReconnectDelay:1,reconnectIncrementFactor:2,pingInterval:6e4},e),t}return i(n,e),s(n,[{key:"start",value:function(){var e=this;return this.options.port?new Promise(function(n,t){e.server=new a(e.options,function(o){return o?t(o):(e.bindEvents(),void n())})}):(this.server=new a(this.options),this.bindEvents(),Promise.resolve())}},{key:"stop",value:function(){var e=this;if(!this.server){var n=new Error("Could not stop server. Server is probably not started, or already stopped.");return Promise.reject(n)}return new Promise(function(n){e.server.close(),e.server=null,n()})}},{key:"bindEvents",value:function(){this.server.on("connection",this.onConnection.bind(this)),this.server.on("headers",this.onHeaders.bind(this)),this.server.on("error",this.onError.bind(this))}},{key:"onConnection",value:function(e){var t=this,o=new u(e,this);o.on(u.Events.HANDSHAKE_OK,function(){return t.emit(n.Events.CONNECTION,o)})}},{key:"onHeaders",value:function(e){this.emit(n.Events.HEADERS,e)}},{key:"onError",value:function(e){this.emit(n.Events.ERROR,e)}},{key:"getConnections",value:function(){return this.rooms.root.getConnections()}},{key:"getConnectionById",value:function(e){return this.rooms.root.getConnectionById(e)}},{key:"broadcast",value:function(e,n){this.rooms.root.broadcast(e,n)}},{key:"getRoom",value:function(e){return this.rooms.getRoom(e)}},{key:"getRoomsOf",value:function(e){return this.rooms.getRoomsOf(e)}},{key:"removeFromAllRooms",value:function(e){this.rooms.removeFromAll(e)}}]),n}(l);f.Events={CONNECTION:"connection",HANDSHAKE:"handshake",HEADERS:"headers",ERROR:"error"},e.exports=f}]);
+module.exports =
+/******/ (function(modules) { // webpackBootstrap
+/******/ 	// The module cache
+/******/ 	var installedModules = {};
+/******/
+/******/ 	// The require function
+/******/ 	function __webpack_require__(moduleId) {
+/******/
+/******/ 		// Check if module is in cache
+/******/ 		if(installedModules[moduleId])
+/******/ 			return installedModules[moduleId].exports;
+/******/
+/******/ 		// Create a new module (and put it into the cache)
+/******/ 		var module = installedModules[moduleId] = {
+/******/ 			i: moduleId,
+/******/ 			l: false,
+/******/ 			exports: {}
+/******/ 		};
+/******/
+/******/ 		// Execute the module function
+/******/ 		modules[moduleId].call(module.exports, module, module.exports, __webpack_require__);
+/******/
+/******/ 		// Flag the module as loaded
+/******/ 		module.l = true;
+/******/
+/******/ 		// Return the exports of the module
+/******/ 		return module.exports;
+/******/ 	}
+/******/
+/******/
+/******/ 	// expose the modules object (__webpack_modules__)
+/******/ 	__webpack_require__.m = modules;
+/******/
+/******/ 	// expose the module cache
+/******/ 	__webpack_require__.c = installedModules;
+/******/
+/******/ 	// identity function for calling harmory imports with the correct context
+/******/ 	__webpack_require__.i = function(value) { return value; };
+/******/
+/******/ 	// define getter function for harmory exports
+/******/ 	__webpack_require__.d = function(exports, name, getter) {
+/******/ 		Object.defineProperty(exports, name, {
+/******/ 			configurable: false,
+/******/ 			enumerable: true,
+/******/ 			get: getter
+/******/ 		});
+/******/ 	};
+/******/
+/******/ 	// getDefaultExport function for compatibility with non-harmony modules
+/******/ 	__webpack_require__.n = function(module) {
+/******/ 		var getter = module && module.__esModule ?
+/******/ 			function getDefault() { return module['default']; } :
+/******/ 			function getModuleExports() { return module; };
+/******/ 		__webpack_require__.d(getter, 'a', getter);
+/******/ 		return getter;
+/******/ 	};
+/******/
+/******/ 	// Object.prototype.hasOwnProperty.call
+/******/ 	__webpack_require__.o = function(object, property) { return Object.prototype.hasOwnProperty.call(object, property); };
+/******/
+/******/ 	// __webpack_public_path__
+/******/ 	__webpack_require__.p = "";
+/******/
+/******/ 	// Load entry module and return exports
+/******/ 	return __webpack_require__(__webpack_require__.s = 20);
+/******/ })
+/************************************************************************/
+/******/ ([
+/* 0 */
+/***/ function(module, exports) {
+
+module.exports = require("event-emitter-extra/dist/commonjs.modern");
+
+/***/ },
+/* 1 */
+/***/ function(module, exports) {
+
+module.exports = require("lodash/forEach");
+
+/***/ },
+/* 2 */
+/***/ function(module, exports) {
+
+module.exports = require("debug");
+
+/***/ },
+/* 3 */
+/***/ function(module, exports, __webpack_require__) {
+
+"use strict";
+'use strict';
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var isUndefined = __webpack_require__(16);
+var isObject = __webpack_require__(6);
+var isFunction = __webpack_require__(15);
+var values = __webpack_require__(18);
+
+var _require = __webpack_require__(4),
+    generateDummyId = _require.generateDummyId;
+
+var EventEmitterExtra = __webpack_require__(0);
+
+/**
+ * Message class.
+ *
+ * @private
+ * @class Message
+ * @extends {EventEmitterExtra}
+ * @property {string} name Event name
+ * @property {?any} payload Message payload.
+ */
+
+var Message = function (_EventEmitterExtra) {
+    _inherits(Message, _EventEmitterExtra);
+
+    _createClass(Message, null, [{
+        key: 'parse',
+        value: function parse(raw) {
+            try {
+                var data = JSON.parse(raw);
+                return new Message({
+                    name: data.n,
+                    payload: data.p,
+                    err: data.e,
+                    id: data.i
+                });
+            } catch (err) {
+                throw new Error('Could not parse message.');
+            }
+        }
+    }]);
+
+    function Message(_ref) {
+        var name = _ref.name,
+            payload = _ref.payload,
+            id = _ref.id,
+            err = _ref.err;
+
+        _classCallCheck(this, Message);
+
+        var _this = _possibleConstructorReturn(this, (Message.__proto__ || Object.getPrototypeOf(Message)).call(this));
+
+        _this.name = name;
+        _this.payload = payload;
+        _this.id = id;
+        _this.err = err;
+
+        _this.isResponded_ = false;
+        return _this;
+    }
+
+    _createClass(Message, [{
+        key: 'setId',
+        value: function setId() {
+            var id = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : generateDummyId();
+
+            this.id = id;
+            return id;
+        }
+    }, {
+        key: 'createResponse',
+        value: function createResponse(err, payload) {
+            return new Message({ name: '_r', payload: payload, err: err, id: this.id });
+        }
+
+        /**
+         * Resolves the message with sending a response back. If event source
+         * does not expecting a response, you don't need to call these methods.
+         * @param {any=} payload
+         */
+
+    }, {
+        key: 'resolve',
+        value: function resolve(payload) {
+            var _this2 = this;
+
+            if (isUndefined(this.id)) return console.warn('[line] A message without an id cannot be resolved.');
+
+            if (this.isResponded_) return console.warn('[line] This message has already been ended.');
+
+            // If thenable
+            if (isObject(payload) && isFunction(payload.then)) {
+                payload.then(function (response) {
+                    _this2.isResponded_ = true;
+                    _this2.emit('resolved', payload);
+                }).catch(function (err) {
+                    _this2.isResponded_ = true;
+                    _this2.emit('rejected', err);
+                });
+
+                return;
+            }
+
+            this.isResponded_ = true;
+            this.emit('resolved', payload);
+        }
+
+        /**
+         * Rejects the message, with sending error response back to event source.
+         * @param {any=} err
+         */
+
+    }, {
+        key: 'reject',
+        value: function reject(err) {
+            if (isUndefined(this.id)) return console.warn('[line] A message without an id cannot be rejected.');
+
+            if (this.isResponded_) return console.warn('[line] This message has already been ended.');
+
+            this.isResponded_ = true;
+            this.emit('rejected', err);
+        }
+    }, {
+        key: 'toString',
+        value: function toString() {
+            try {
+                var data = { n: this.name };
+
+                if (!isUndefined(this.payload)) data.p = this.payload;
+
+                if (!isUndefined(this.id)) data.i = this.id;
+
+                if (!isUndefined(this.err)) data.e = this.err;
+
+                return JSON.stringify(data);
+            } catch (err) {
+                throw new Error('Could not stringify message.');
+            }
+        }
+    }, {
+        key: 'dispose',
+        value: function dispose() {
+            var _this3 = this;
+
+            var events = this.eventNames();
+            events.forEach(function (event) {
+                return _this3.removeAllListeners(event);
+            });
+        }
+    }]);
+
+    return Message;
+}(EventEmitterExtra);
+
+Message.Names = {
+    RESPONSE: '_r',
+    HANDSHAKE: '_h',
+    PING: '_p'
+};
+
+Message.ReservedNames = values(Message.Names);
+
+module.exports = Message;
+
+/***/ },
+/* 4 */
+/***/ function(module, exports, __webpack_require__) {
+
+"use strict";
+"use strict";
+
+var assign = __webpack_require__(5);
+
+function promiseDelay(ms) {
+    return new Promise(function (resolve) {
+        return setTimeout(function (_) {
+            return resolve();
+        }, ms);
+    });
+}
+
+function retry(task) {
+    var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+
+    var defaults = { maxDelay: 160, maxCount: 0, initialDelay: 3, increaseFactor: 2 };
+    options = assign(defaults, options);
+    var timeout = void 0;
+    var counter = 1;
+    var delay = options.initialDelay;
+
+    var once = function once() {
+        return task().catch(function (err) {
+            counter++;
+            delay = delay * options.increaseFactor;
+
+            if (options.maxCount != 0 && counter > options.maxCount) {
+                timeout && clearTimeout(timeout);
+                throw err;
+            }
+            return promiseDelay(delay * 1000 / 2).then(function (_) {
+                return once();
+            });
+        });
+    };
+
+    return once();
+}
+
+// http://stackoverflow.com/a/6248722
+function generateDummyId() {
+    var length = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 4;
+
+    return ("0000" + (Math.random() * Math.pow(36, length) << 0).toString(36)).slice(-length);
+}
+
+module.exports = { promiseDelay: promiseDelay, retry: retry, generateDummyId: generateDummyId };
+
+/***/ },
+/* 5 */
+/***/ function(module, exports) {
+
+module.exports = require("lodash/assign");
+
+/***/ },
+/* 6 */
+/***/ function(module, exports) {
+
+module.exports = require("lodash/isObject");
+
+/***/ },
+/* 7 */
+/***/ function(module, exports, __webpack_require__) {
+
+"use strict";
+'use strict';
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var Utils = __webpack_require__(4);
+var Message = __webpack_require__(3);
+var EventEmitterExtra = __webpack_require__(0);
+var assign = __webpack_require__(5);
+var forEach = __webpack_require__(1);
+var isObject = __webpack_require__(6);
+var debounce = __webpack_require__(13);
+var Deferred = __webpack_require__(10);
+var uuid = __webpack_require__(19);
+var debug = __webpack_require__(2)('line:server:connection');
+
+/**
+ * Server connection class. Constructor of this class is not publicly accessible.
+ * When you listen `Server.Events.CONNECTION` or `Server.Events.HANDSHAKE`, an instance
+ * of `ServerConnection` will be emitted.
+ *
+ * @class ServerConnection
+ * @extends {EventEmitterExtra}
+ * @private
+ * @property {string} id Unique connection id
+ */
+
+var ServerConnection = function (_EventEmitterExtra) {
+    _inherits(ServerConnection, _EventEmitterExtra);
+
+    function ServerConnection(socket, server) {
+        _classCallCheck(this, ServerConnection);
+
+        var _this = _possibleConstructorReturn(this, (ServerConnection.__proto__ || Object.getPrototypeOf(ServerConnection)).call(this));
+
+        _this.id = uuid.v4();
+        debug('Creating connection with id ' + _this.id + ' ...');
+
+        _this.socket = socket;
+        _this.server = server;
+
+        _this.deferreds_ = {};
+        _this.state = ServerConnection.States.OPEN;
+        _this.handshakeResolved_ = false;
+
+        _this.socket.on('message', _this.onMessage_.bind(_this));
+        _this.socket.on('error', _this.onError_.bind(_this));
+        _this.socket.on('close', _this.onClose_.bind(_this));
+
+        _this.autoPing_ = server.options.pingInterval > 0 ? debounce(function () {
+            if (_this.state != ServerConnection.States.OPEN) {
+                debug('Not auto-pinging, connection state (' + _this.state + ') is not open');
+                return;
+            }
+
+            _this.ping().then(function () {
+                debug('Auto-ping successful');
+
+                if (server.options.pingInterval > 0 && _this.state == ServerConnection.States.OPEN) {
+                    _this.autoPing_();
+                }
+            }).catch(function (err) {
+                debug('Auto-ping failed: ' + err.toString());
+            });
+        }, server.options.pingInterval) : function () {};
+        return _this;
+    }
+
+    _createClass(ServerConnection, [{
+        key: 'onMessage_',
+        value: function onMessage_(data, flags) {
+            var _this2 = this;
+
+            var message = Message.parse(data);
+            debug('Native "message" event recieved: ' + data);
+
+            this.autoPing_();
+
+            // Emit original _message event with raw data
+            this.emit(ServerConnection.Events.MESSAGE, data);
+
+            // Message without response (no id fields)
+            if (!message.id && Message.ReservedNames.indexOf(message.name) == -1) {
+                return this.emit(message.name, message);
+            }
+
+            // Handshake
+            if (message.name == Message.Names.HANDSHAKE) {
+                return this.onHandshake_(message);
+            }
+
+            // Ping
+            if (message.name == Message.Names.PING) {
+                return this.onPing_(message);
+            }
+
+            // Message response
+            if (message.name == Message.Names.RESPONSE && this.deferreds_[message.id]) {
+                return this.onResponse_(message);
+            }
+
+            // Message with response
+            message.once('resolved', function (payload) {
+                debug('Message #' + message.id + ' is resolved, sending response...');
+                _this2.send_(message.createResponse(null, payload));
+                message.dispose();
+            });
+
+            message.once('rejected', function (err) {
+                debug('Message #' + message.id + ' is rejected, sending response...');
+                if (isObject(err) && err instanceof Error) err = assign({ message: err.message, name: err.name }, err);
+                _this2.send_(message.createResponse(err));
+                message.dispose();
+            });
+
+            this.emit(message.name, message);
+        }
+    }, {
+        key: 'onHandshake_',
+        value: function onHandshake_(message) {
+            var _this3 = this;
+
+            debug('Handshake message recieved: ' + message);
+
+            message.once('resolved', function (payload) {
+                debug('Handshake is resolved, sending response...');
+                _this3.handshakeResolved_ = true;
+
+                var responsePayload = {
+                    handshakePayload: payload,
+                    id: _this3.id,
+                    timeout: _this3.server.options.timeout,
+                    maxReconnectDelay: _this3.server.options.maxReconnectDelay,
+                    initialReconnectDelay: _this3.server.options.initialReconnectDelay,
+                    reconnectIncrementFactor: _this3.server.options.reconnectIncrementFactor,
+                    pingInterval: _this3.server.options.pingInterval
+                };
+
+                _this3.send_(message.createResponse(null, responsePayload)).then(function () {
+                    debug('Handshake resolving response is sent, emitting Handshake OK...');
+                    _this3.server.rooms.root.add(_this3);
+                    _this3.emit(ServerConnection.Events.HANDSHAKE_OK);
+                }).catch(function (err) {
+                    debug('Handshake resolving response could not sent, manually calling "onClose_"...');
+                    console.log('Handshake resolve response failed to send for ' + _this3.id + '.');
+                    _this3.onClose_(500, err);
+                }).then(function () {
+                    message.dispose();
+                });
+            });
+
+            message.once('rejected', function (err) {
+                debug('Handshake is rejected, sending response...');
+                if (isObject(err) && err instanceof Error) err = assign({ message: err.message, name: 'Error' }, err);
+
+                _this3.send_(message.createResponse(err)).catch(function (err_) {
+                    debug('Handshake rejecting response could not sent, manually calling "onClose_"...');
+                    console.log('Handshake reject response failed to send for ' + _this3.id + '.');
+                }).then(function () {
+                    _this3.onClose_(500, err);
+                    message.dispose();
+                });
+            });
+
+            // Sorry for party rocking
+            debug('Emitting server\'s "handshake" event...');
+            var handshakeResponse = this.server.emit('handshake', this, message);
+
+            if (!handshakeResponse) {
+                debug('There is no handshake listener, resolving the handshake by default...');
+                message.resolve();
+            }
+        }
+    }, {
+        key: 'onResponse_',
+        value: function onResponse_(message) {
+            var deferred = this.deferreds_[message.id];
+
+            if (message.err) {
+                debug('Response (rejecting) recieved: ' + message);
+                var err = assign(new Error(), message.err);
+                deferred.reject(err);
+            } else {
+                debug('Response (resolving) recieved: ' + message);
+                deferred.resolve(message.payload);
+            }
+
+            delete this.deferreds_[message.id];
+        }
+    }, {
+        key: 'onPing_',
+        value: function onPing_(message) {
+            debug('Ping request recieved, responding with "pong"...');
+            this.send_(message.createResponse(null, 'pong')).catch(function (err) {
+                debug('Could not send ping response: ' + err);
+                console.log('Ping responce failed to send', err);
+            });
+        }
+    }, {
+        key: 'onError_',
+        value: function onError_(err) {
+            debug('Native "error" event recieved, emitting line\'s "error" event: ' + err);
+            this.emit(ServerConnection.Events.ERROR, err);
+            debug('And manually calling "onClose_"...');
+            this.onClose_(500, err);
+        }
+    }, {
+        key: 'onClose_',
+        value: function onClose_(code, message) {
+            debug('Native "close" event recieved with code ' + code + ': ' + message);
+
+            if (this.state == ServerConnection.States.CLOSE) {
+                debug('Connection\'s state is already closed, ignoring...');
+                return;
+            }
+
+            debug('Removing connection from all rooms, rejecting all waiting messages...');
+            this.server.rooms.removeFromAll(this);
+            this.server.rooms.root.remove(this);
+
+            forEach(this.deferreds_, function (deferred) {
+                deferred.reject(new Error('Socket connection closed!'));
+            });
+            this.deferreds_ = {};
+
+            debug('Emitting line\'s "close" event...');
+            this.state = ServerConnection.States.CLOSE;
+            this.emit(ServerConnection.Events.CLOSE, code, message);
+        }
+
+        /**
+         * Change connection's id, it's random by default. This method is helpful if you already have
+         * custom identification for your clients. You must do this before handshake resolved. If
+         * handshake is already resolved or there is conflict, this method will throw error.
+         *
+         * @param {string} newId New connection id
+         * @memberOf ServerConnection
+         */
+
+    }, {
+        key: 'setId',
+        value: function setId(newId) {
+            if (this.handshakeResolved_) throw new Error('Handshake already resolved, you cannot change connection id anymore');
+
+            if (this.server.getConnectionById(newId)) throw new Error('Conflict! There is already connection with id newId');
+
+            this.id = newId;
+        }
+
+        /**
+         * Joins the connection into provided room. If there is no room, it will be created automatically.
+         *
+         * @param {string} roomName
+         * @memberOf ServerConnection
+         */
+
+    }, {
+        key: 'joinRoom',
+        value: function joinRoom(roomName) {
+            this.server.rooms.add(roomName, this);
+        }
+
+        /**
+         * Leaves the connection from provided room.
+         *
+         * @param {string} roomName
+         * @memberOf ServerConnection
+         */
+
+    }, {
+        key: 'leaveRoom',
+        value: function leaveRoom(roomName) {
+            this.server.rooms.remove(roomName, this);
+        }
+
+        /**
+         * Gets the joined room names.
+         *
+         * @returns {Array<string>}
+         * @memberOf ServerConnection
+         */
+
+    }, {
+        key: 'getRooms',
+        value: function getRooms() {
+            return this.server.rooms.getRoomsOf(this);
+        }
+
+        /**
+         * Sends a message to client and waits for its response.
+         *
+         * @param {string} eventName
+         * @param {any=} payload
+         * @returns {Promise<any>}
+         * @memberOf ServerConnection
+         * @example
+         * connection
+         *   .send('hello', {optional: 'payload'})
+         *   .then(responsePayload => {
+         *     // Message is resolved by client
+         *   })
+         *   .catch(err => {
+         *     // Could not send message
+         *     // or
+         *     // Client rejected the message!
+         *   });
+         */
+
+    }, {
+        key: 'send',
+        value: function send(eventName, payload) {
+            var _this4 = this;
+
+            var message = new Message({ name: eventName, payload: payload });
+            message.setId();
+
+            return this.send_(message).then(function (_) {
+                var deferred = _this4.deferreds_[message.id] = new Deferred({
+                    onExpire: function onExpire() {
+                        debug('Message #' + message.id + ' timeout!');
+                        delete _this4.deferreds_[message.id];
+                    },
+                    timeout: _this4.server.options.timeout
+                });
+
+                return deferred;
+            });
+        }
+
+        /**
+         * Sends a message to client without waiting response.
+         *
+         * @param {string} eventName
+         * @param {any=} payload
+         * @returns {Promise}
+         * @memberOf ServerConnection
+         * @example
+         * connection
+         *   .sendWithoutResponse('hello', {optional: 'payload'})
+         *   .then(() => {
+         *     // Message sent successfully
+         *   })
+         *   .catch(err => {
+         *     // Message could not be sent to client
+         *   })
+         */
+
+    }, {
+        key: 'sendWithoutResponse',
+        value: function sendWithoutResponse(eventName, payload) {
+            var message = new Message({ name: eventName, payload: payload });
+            return this.send_(message);
+        }
+    }, {
+        key: 'send_',
+        value: function send_(message) {
+            var _this5 = this;
+
+            return new Promise(function (resolve, reject) {
+                debug('Sending message: ' + message);
+                _this5.socket.send(message.toString(), function (err) {
+                    if (err) return reject(err);
+                    resolve();
+                });
+            });
+        }
+
+        /**
+         * Pings the client. If there is no respose, closes the connection.
+         *
+         * @returns {Promise}
+         * @memberOf ServerConnection
+         */
+
+    }, {
+        key: 'ping',
+        value: function ping() {
+            var _this6 = this;
+
+            debug('Pinging...');
+            return this.send(Message.Names.PING).catch(function (err) {
+                debug('Ping failed: ' + err.toString());
+                _this6.close(410, new Error('Ping failed, dead connection'));
+                throw err;
+            });
+        }
+
+        /**
+         * Gracefully closes the client connection.
+         *
+         * @param {number} code
+         * @param {any} data
+         * @returns {Promise}
+         */
+
+    }, {
+        key: 'close',
+        value: function close(code, data) {
+            var _this7 = this;
+
+            debug('Closing the connection...');
+            return new Promise(function (resolve) {
+                _this7.socket.close(code, data);
+                resolve();
+            });
+        }
+    }]);
+
+    return ServerConnection;
+}(EventEmitterExtra);
+
+/**
+ * @static
+ * @readonly
+ * @enum {string}
+ */
+
+
+ServerConnection.States = {
+    /**
+     * `open` Connection is alive and open.
+     */
+    OPEN: 'open',
+    /**
+     * `close` There is no alive connection.
+     */
+    CLOSE: 'close'
+};
+
+/**
+ * @static
+ * @readonly
+ * @enum {string}
+ */
+ServerConnection.Events = {
+    /**
+     * `_message`
+     */
+    MESSAGE: '_message',
+    /**
+     * @ignore
+     */
+    HANDSHAKE_OK: '_handshakeOk', // Private
+    /**
+     * `_error`
+     */
+    ERROR: '_error',
+    /**
+     * `_close`
+     */
+    CLOSE: '_close'
+};
+
+module.exports = ServerConnection;
+
+/***/ },
+/* 8 */
+/***/ function(module, exports, __webpack_require__) {
+
+"use strict";
+'use strict';
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var filter = __webpack_require__(14);
+var forEach = __webpack_require__(1);
+var map = __webpack_require__(17);
+var Room = __webpack_require__(11);
+
+var Rooms = function () {
+    function Rooms() {
+        _classCallCheck(this, Rooms);
+
+        this.rooms = {};
+        this.root = new Room();
+    }
+
+    _createClass(Rooms, [{
+        key: 'add',
+        value: function add(roomName, connection) {
+            if (!this.rooms[roomName]) this.rooms[roomName] = new Room(roomName);
+
+            this.rooms[roomName].add(connection);
+        }
+    }, {
+        key: 'remove',
+        value: function remove(roomName, connection) {
+            if (!this.rooms[roomName]) return;
+
+            this.rooms[roomName].remove(connection);
+
+            if (!this.rooms[roomName].getConnectionsCount()) delete this.rooms[roomName];
+        }
+    }, {
+        key: 'getRoomsOf',
+        value: function getRoomsOf(connection) {
+            return map(filter(this.rooms, function (room) {
+                return room.getConnectionById(connection.id);
+            }), 'name');
+        }
+    }, {
+        key: 'getRoom',
+        value: function getRoom(room) {
+            return this.rooms[room];
+        }
+    }, {
+        key: 'removeFromAll',
+        value: function removeFromAll(connection) {
+            var _this = this;
+
+            var rooms = this.getRoomsOf(connection);
+            forEach(rooms, function (roomName) {
+                return _this.rooms[roomName].remove(connection);
+            });
+        }
+    }]);
+
+    return Rooms;
+}();
+
+module.exports = Rooms;
+
+/***/ },
+/* 9 */
+/***/ function(module, exports) {
+
+module.exports = require("uws");
+
+/***/ },
+/* 10 */
+/***/ function(module, exports) {
+
+"use strict";
+'use strict';
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var Deferred = function () {
+    function Deferred() {
+        var _this = this;
+
+        var _ref = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
+            _ref$handler = _ref.handler,
+            handler = _ref$handler === undefined ? function () {} : _ref$handler,
+            _ref$onExpire = _ref.onExpire,
+            onExpire = _ref$onExpire === undefined ? function () {} : _ref$onExpire,
+            _ref$timeout = _ref.timeout,
+            timeout = _ref$timeout === undefined ? 0 : _ref$timeout;
+
+        _classCallCheck(this, Deferred);
+
+        this.resolve_ = null;
+        this.reject_ = null;
+
+        this.timeout_ = null;
+        this.onExpire_ = onExpire;
+        this.isFinished_ = false;
+
+        this.promise = new Promise(function (resolve, reject) {
+            _this.resolve_ = resolve;
+            _this.reject_ = reject;
+
+            try {
+                handler(_this);
+            } catch (err) {
+                _this.reject(err);
+            }
+        });
+
+        if (timeout > 0) {
+            this.timeout_ = setTimeout(this.expire.bind(this), timeout);
+        }
+    }
+
+    _createClass(Deferred, [{
+        key: 'resolve',
+        value: function resolve(data) {
+            if (this.isFinished_) return;
+
+            this.isFinished_ = true;
+            this.clearTimeout_();
+            this.resolve_(data);
+        }
+    }, {
+        key: 'reject',
+        value: function reject(err) {
+            if (this.isFinished_) return;
+
+            this.isFinished_ = true;
+            this.clearTimeout_();
+            this.reject_(err);
+        }
+    }, {
+        key: 'expire',
+        value: function expire() {
+            this.isFinished_ = true;
+            this.clearTimeout_();
+            this.onExpire_();
+            this.reject_(new Error('Timeout exceed'));
+        }
+    }, {
+        key: 'then',
+        value: function then() {
+            for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+                args[_key] = arguments[_key];
+            }
+
+            return this.promise.then.apply(this.promise, args);
+        }
+    }, {
+        key: 'catch',
+        value: function _catch() {
+            for (var _len2 = arguments.length, args = Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
+                args[_key2] = arguments[_key2];
+            }
+
+            return this.promise.catch.apply(this.promise, args);
+        }
+    }, {
+        key: 'clearTimeout_',
+        value: function clearTimeout_() {
+            if (this.timeout_) {
+                clearTimeout(this.timeout_);
+                this.timeout_ = null;
+            }
+        }
+    }]);
+
+    return Deferred;
+}();
+
+module.exports = Deferred;
+
+/***/ },
+/* 11 */
+/***/ function(module, exports, __webpack_require__) {
+
+"use strict";
+'use strict';
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var forEach = __webpack_require__(1);
+var clone = __webpack_require__(12);
+var Message = __webpack_require__(3);
+
+/**
+ * Line room class.
+ *
+ * @private
+ * @class ServerRoom
+ * @param {string} name Room name
+ * @property {string} name
+ */
+
+var ServerRoom = function () {
+    function ServerRoom(name) {
+        var connections = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+
+        _classCallCheck(this, ServerRoom);
+
+        this.name = name;
+        this.connections = connections;
+    }
+
+    /**
+     * Adds a connection into room.
+     * @param {ServerConnection} connection
+     */
+
+
+    _createClass(ServerRoom, [{
+        key: 'add',
+        value: function add(connection) {
+            this.connections[connection.id] = connection;
+        }
+
+        /**
+         * Removes a connection from room.
+         * @param {ServerConnection} connection
+         */
+
+    }, {
+        key: 'remove',
+        value: function remove(connection) {
+            delete this.connections[connection.id];
+        }
+
+        /**
+         * Gets a connection by id.
+         * @param {string} connectionId
+         * @returns {?ServerConnection}
+         */
+
+    }, {
+        key: 'getConnectionById',
+        value: function getConnectionById(connectionId) {
+            return this.connections[connectionId];
+        }
+
+        /**
+         * Gets all connections in the room. Returns a object where keys are
+         * connection id and values are ServerConnection.
+         * @returns {{string: ServerConnection}}
+         */
+
+    }, {
+        key: 'getConnections',
+        value: function getConnections() {
+            return clone(this.connections);
+        }
+
+        /**
+         * Returns the total connection count in room.
+         * @returns {number}
+         */
+
+    }, {
+        key: 'getConnectionsCount',
+        value: function getConnectionsCount() {
+            return Object.keys(this.connections).length;
+        }
+    }, {
+        key: 'broadcast_',
+        value: function broadcast_(message) {
+            forEach(this.connections, function (connection) {
+                connection.send_(message);
+            });
+        }
+
+        /**
+         * Broadcast a message to all connections in the room.
+         * @param {string} eventName
+         * @param {any=} payload
+         */
+
+    }, {
+        key: 'broadcast',
+        value: function broadcast(eventName, payload) {
+            var message = new Message({ name: eventName, payload: payload });
+            forEach(this.connections, function (connection, index) {
+                connection.send_(message);
+            });
+        }
+    }]);
+
+    return ServerRoom;
+}();
+
+module.exports = ServerRoom;
+
+/***/ },
+/* 12 */
+/***/ function(module, exports) {
+
+module.exports = require("lodash/clone");
+
+/***/ },
+/* 13 */
+/***/ function(module, exports) {
+
+module.exports = require("lodash/debounce");
+
+/***/ },
+/* 14 */
+/***/ function(module, exports) {
+
+module.exports = require("lodash/filter");
+
+/***/ },
+/* 15 */
+/***/ function(module, exports) {
+
+module.exports = require("lodash/isFunction");
+
+/***/ },
+/* 16 */
+/***/ function(module, exports) {
+
+module.exports = require("lodash/isUndefined");
+
+/***/ },
+/* 17 */
+/***/ function(module, exports) {
+
+module.exports = require("lodash/map");
+
+/***/ },
+/* 18 */
+/***/ function(module, exports) {
+
+module.exports = require("lodash/values");
+
+/***/ },
+/* 19 */
+/***/ function(module, exports) {
+
+module.exports = require("node-uuid");
+
+/***/ },
+/* 20 */
+/***/ function(module, exports, __webpack_require__) {
+
+"use strict";
+'use strict';
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var WebSocketServer = __webpack_require__(9).Server;
+var Connection = __webpack_require__(7);
+var Rooms = __webpack_require__(8);
+var EventEmitterExtra = __webpack_require__(0);
+var debug = __webpack_require__(2)('line:server');
+
+/**
+ * Line Server Class
+ * Documentation is here deneme
+ *
+ * @class Server
+ * @extends {EventEmitterExtra}
+ * @param {Object=} options Options object.
+ * @param {string=} options.host Server host name. Inherited from uws, [see docs](https://github.com/websockets/ws/blob/master/doc/ws.md#new-websocketserveroptions-callback).
+ * @param {number=} options.port Server port. Inherited from uws, [see docs](https://github.com/websockets/ws/blob/master/doc/ws.md#new-websocketserveroptions-callback).
+ * @param {http.Server=} options.server Server object to be attached. If provided, `host` and `port` will ignored. Inherited from uws, [see docs](https://github.com/websockets/ws/blob/master/doc/ws.md#new-websocketserveroptions-callback).
+ * @param {Function=} options.handleProtocols Inherited from uws, [see docs](https://github.com/websockets/ws/blob/master/doc/ws.md#optionshandleprotocols).
+ * @param {string=} options.path Inherited from uws, [see docs](https://github.com/websockets/ws/blob/master/doc/ws.md#new-websocketserveroptions-callback).
+ * @param {boolean=} options.noServer Inherited from uws, [see docs](https://github.com/websockets/ws/blob/master/doc/ws.md#new-websocketserveroptions-callback).
+ * @param {boolean=} options.clientTracking Inherited from uws, [see docs](https://github.com/websockets/ws/blob/master/doc/ws.md#new-websocketserveroptions-callback).
+ * @param {Object=} options.perMessageDeflate Inherited from uws, [see docs](https://github.com/websockets/ws/blob/master/doc/ws.md#optionspermessagedeflate).
+ * @param {number=} options.timeout Timeout duration (in ms) for message responses. Default: 30 seconds
+ * @param {number=} options.maxReconnectDelay Maximum reconnection delay (in seconds) for clients. Default: 60 seconds
+ * @param {number=} options.initialReconnectDelay Intial reconnection delay (in seconds) for clients. Defualt: 1 seconds
+ * @param {number=} options.reconnectIncrementFactor Reconnection incremental factor for clients. Default: 2
+ * @param {number=} options.pingInterval Ping interval (in ms) for both server and client. Default: 60 seconds.
+ * @example
+ * const Server = require('line-socket/server');
+ * const server = new Server({
+ *   port: 8080
+ * });
+ */
+
+var Server = function (_EventEmitterExtra) {
+    _inherits(Server, _EventEmitterExtra);
+
+    function Server() {
+        var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
+        _classCallCheck(this, Server);
+
+        var _this = _possibleConstructorReturn(this, (Server.__proto__ || Object.getPrototypeOf(Server)).call(this));
+
+        _this.rooms = new Rooms();
+
+        _this.options = Object.assign({
+            timeout: 30000,
+            maxReconnectDelay: 60,
+            initialReconnectDelay: 1,
+            reconnectIncrementFactor: 2,
+            pingInterval: 60000
+        }, options);
+
+        debug('Initalizing with options: ' + JSON.stringify(_this.options));
+        return _this;
+    }
+
+    /**
+     * Starts the server.
+     *
+     * @returns {Promise}
+     * @memberOf Server
+     * @example
+     * server
+     *   .start()
+     *   .then(() => {
+     *     console.log('Server started');
+     *   })
+     *   .catch((err) => {
+     *     console.log('Server could not started', err);
+     *   });
+     */
+
+
+    _createClass(Server, [{
+        key: 'start',
+        value: function start() {
+            var _this2 = this;
+
+            if (!this.options.port) {
+                debug('Starting without port...');
+                this.server = new WebSocketServer(this.options);
+                this.bindEvents();
+                return Promise.resolve();
+            }
+
+            return new Promise(function (resolve, reject) {
+                debug('Starting with port "' + _this2.options.port + '" ...');
+
+                _this2.server = new WebSocketServer(_this2.options, function (err) {
+                    if (err) {
+                        debug('Could not start: ' + err);
+                        return reject(err);
+                    }
+
+                    _this2.bindEvents();
+                    resolve();
+                });
+            });
+        }
+
+        /**
+         * Stops the server.
+         *
+         * @returns {Promise}
+         * @memberOf Server
+         * @example
+         * server
+         *   .stop()
+         *   .then(() => {
+         *     console.log('Server stopped');
+         *   })
+         *   .catch((err) => {
+         *     console.log('Server could not stopped', err);
+         *   });
+         */
+
+    }, {
+        key: 'stop',
+        value: function stop() {
+            var _this3 = this;
+
+            if (!this.server) {
+                debug('Could not stop server. Server is probably not started, or already stopped.');
+                var err = new Error('Could not stop server. Server is probably not started, or already stopped.');
+                return Promise.reject(err);
+            }
+
+            return new Promise(function (resolve) {
+                debug('Closing and disposing the server...');
+                _this3.server.close();
+                _this3.server = null;
+                resolve();
+            });
+        }
+    }, {
+        key: 'bindEvents',
+        value: function bindEvents() {
+            debug('Binding server events...');
+
+            this.server.on('connection', this.onConnection.bind(this));
+            this.server.on('headers', this.onHeaders.bind(this));
+            this.server.on('error', this.onError.bind(this));
+        }
+    }, {
+        key: 'onConnection',
+        value: function onConnection(socket) {
+            var _this4 = this;
+
+            debug('Native "connection" event recieved, creating line connection...');
+            var connection = new Connection(socket, this);
+
+            connection.on(Connection.Events.HANDSHAKE_OK, function () {
+                debug('Handshake OK, emitting line\'s "connection" event...');
+                _this4.emit(Server.Events.CONNECTION, connection);
+            });
+        }
+    }, {
+        key: 'onHeaders',
+        value: function onHeaders(headers) {
+            debug('Native "headers" event recieved, emitting line\'s "headers" event... (' + headers + ')');
+            this.emit(Server.Events.HEADERS, headers);
+        }
+    }, {
+        key: 'onError',
+        value: function onError(err) {
+            debug('Native "error" event recieved, emitting line\'s "error" event... (' + err + ')');
+            this.emit(Server.Events.ERROR, err);
+        }
+
+        /**
+         * Returns a object where keys are connection id and values are ServerConnection.
+         *
+         * @returns {{string: ServerConnection}}
+         * @memberOf Server
+         */
+
+    }, {
+        key: 'getConnections',
+        value: function getConnections() {
+            return this.rooms.root.getConnections();
+        }
+
+        /**
+         * Gets a connection by id
+         *
+         * @param {string} id Unique connection id, which can be accessed at `connection.id`
+         * @returns {?ServerConnection}
+         * @memberOf Server
+         * @example
+         * const connection = server.getConnectionById('someId');
+         *
+         * if (connection)
+         *   connection.send('hello', {world: ''});
+         */
+
+    }, {
+        key: 'getConnectionById',
+        value: function getConnectionById(id) {
+            return this.rooms.root.getConnectionById(id);
+        }
+
+        /**
+         * Broadcasts a message to all the connected clients.
+         *
+         * @param {string} eventName Event name
+         * @param {any=} payload Optional message payload.
+         * @memberOf Server
+         * @example
+         * server.broadcast('hello', {world: ''});
+         */
+
+    }, {
+        key: 'broadcast',
+        value: function broadcast(eventName, payload) {
+            debug('Broadcasting "' + eventName + '" event...');
+            this.rooms.root.broadcast(eventName, payload);
+        }
+
+        /**
+         * Gets a room by name.
+         * @param {string} room Room name
+         * @returns {?ServerRoom}
+         */
+
+    }, {
+        key: 'getRoom',
+        value: function getRoom(room) {
+            return this.rooms.getRoom(room);
+        }
+
+        /**
+         * Gets all the rooms of a connection.
+         * @param {ServerConnection} connection
+         * @returns {Array.<string>} Array of room names.
+         */
+
+    }, {
+        key: 'getRoomsOf',
+        value: function getRoomsOf(connection) {
+            return this.rooms.getRoomsOf(connection);
+        }
+
+        /**
+         * Remove a connection from all the rooms.
+         * @param {ServerConnection} connection
+         */
+
+    }, {
+        key: 'removeFromAllRooms',
+        value: function removeFromAllRooms(connection) {
+            this.rooms.removeFromAll(connection);
+        }
+    }]);
+
+    return Server;
+}(EventEmitterExtra);
+
+/**
+ * @static
+ * @readonly
+ * @enum {string}
+ * @example
+ * server.on('connection', (connection) => {
+ *   connection.send('hello');
+ *   ...
+ * });
+ *
+ * // or
+ *
+ * server.on(Server.Events.CONNECTION, (connection) => {
+ *   connection.send('hello');
+ *   ...
+ * });
+ *
+ * // If you want to authorize your client
+ * server.on('handshake', (connection, handshake) => {
+ *   if (handshake.payload.token == 'test')
+ *     handshake.resolve();
+ *   else
+ *     handshake.reject(new Error('Invalid token'));
+ * });
+ */
+
+
+Server.Events = {
+    /**
+     * `'connection'` This event will fire on a client connects **after successful handshake**.
+     *
+     * ```
+     * function (connection) {}
+     * ```
+     *
+     * where `connection` is a `ServerConnection` instance.
+     */
+    CONNECTION: 'connection',
+    /**
+     * `'handshake'` When a client connection is established, this event will be fired before
+     * `connection` event. If you want to authorize your clients, you must listen this event and
+     * call `handshake.resolve(payload)` or `handshake.reject(err)` accordingly. If you do not consume
+     * this events, all the client connections will be accepted.
+     *
+     * ```
+     * function (connection, handshake) {}
+     * ```
+     *
+     * where `connection` is `ServerConnection` and `handshake` is a `Message` instance.
+     */
+    HANDSHAKE: 'handshake',
+    /**
+     * `'headers'` Inherited from uws, [see docs](https://github.com/websockets/ws/blob/master/doc/ws.md#event-headers)
+     */
+    HEADERS: 'headers',
+    /**
+     * `'error'` Inherited from uws, [see docs](https://github.com/websockets/ws/blob/master/doc/ws.md#event-error)
+     */
+    ERROR: 'error'
+};
+
+module.exports = Server;
+
+/***/ }
+/******/ ]);
 //# sourceMappingURL=server.js.map
