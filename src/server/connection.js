@@ -7,6 +7,7 @@ const isObject = require('lodash/isObject');
 const debounce = require('lodash/debounce');
 const Deferred = require('../lib/deferred');
 const uuid = require('node-uuid');
+const debug = require('debug')('line:server:connection');
 
 
 /**
@@ -24,6 +25,7 @@ class ServerConnection extends EventEmitterExtra {
         super();
 
         this.id = uuid.v4();
+        debug(`Creating connection with id ${this.id} ...`);
 
         this.socket = socket;
         this.server = server;
@@ -38,17 +40,23 @@ class ServerConnection extends EventEmitterExtra {
 
         this.autoPing_ = server.options.pingInterval > 0 ?
             debounce(() => {
-                if (this.state != ServerConnection.States.OPEN)
+                if (this.state != ServerConnection.States.OPEN) {
+                    debug(`Not auto-pinging, connection state (${this.state}) is not open`);
                     return;
+                }
 
                 this
                     .ping()
                     .then(() => {
+                        debug(`Auto-ping successful`);
+
                         if (server.options.pingInterval > 0 && this.state == ServerConnection.States.OPEN) {
                             this.autoPing_();
                         }
                     })
-                    .catch(() => {});
+                    .catch((err) => {
+                        debug(`Auto-ping failed: ${err.toString()}`);
+                    });
             }, server.options.pingInterval) :
             () => {};
     }
@@ -56,6 +64,7 @@ class ServerConnection extends EventEmitterExtra {
 
     onMessage_(data, flags) {
         const message = Message.parse(data);
+        debug(`Native "message" event recieved: ${data}`);
 
         this.autoPing_();
 
@@ -63,8 +72,9 @@ class ServerConnection extends EventEmitterExtra {
         this.emit(ServerConnection.Events.MESSAGE, data);
 
         // Message without response (no id fields)
-        if (!message.id && Message.ReservedNames.indexOf(message.name) == -1)
+        if (!message.id && Message.ReservedNames.indexOf(message.name) == -1) {
             return this.emit(message.name, message);
+        }
 
         // Handshake
         if (message.name == Message.Names.HANDSHAKE) {
@@ -83,11 +93,13 @@ class ServerConnection extends EventEmitterExtra {
 
         // Message with response
         message.once('resolved', payload => {
+            debug(`Message #${message.id} is resolved, sending response...`);
             this.send_(message.createResponse(null, payload));
             message.dispose();
         });
 
         message.once('rejected', err => {
+            debug(`Message #${message.id} is rejected, sending response...`);
             if (isObject(err) && err instanceof Error)
                err = assign({message: err.message, name: err.name}, err);
             this.send_(message.createResponse(err));
@@ -99,7 +111,10 @@ class ServerConnection extends EventEmitterExtra {
 
 
     onHandshake_(message) {
+        debug(`Handshake message recieved: ${message}`);
+
         message.once('resolved', payload => {
+            debug(`Handshake is resolved, sending response...`);
             this.handshakeResolved_ = true;
 
             const responsePayload = {
@@ -115,10 +130,12 @@ class ServerConnection extends EventEmitterExtra {
             this
                 .send_(message.createResponse(null, responsePayload))
                 .then(() => {
+                    debug(`Handshake resolving response is sent, emitting Handshake OK...`);
                     this.server.rooms.root.add(this);
                     this.emit(ServerConnection.Events.HANDSHAKE_OK);
                 })
                 .catch(err => {
+                    debug(`Handshake resolving response could not sent, manually calling "onClose_"...`);
                     console.log(`Handshake resolve response failed to send for ${this.id}.`);
                     this.onClose_(500, err);
                 })
@@ -128,12 +145,14 @@ class ServerConnection extends EventEmitterExtra {
         });
 
         message.once('rejected', err => {
+            debug(`Handshake is rejected, sending response...`);
             if (isObject(err) && err instanceof Error)
                err = assign({message: err.message, name: 'Error'}, err);
 
             this
                 .send_(message.createResponse(err))
                 .catch(err_ => {
+                    debug(`Handshake rejecting response could not sent, manually calling "onClose_"...`);
                     console.log(`Handshake reject response failed to send for ${this.id}.`);
                 })
                 .then(() => {
@@ -143,10 +162,13 @@ class ServerConnection extends EventEmitterExtra {
         });
 
         // Sorry for party rocking
+        debug(`Emitting server's "handshake" event...`);
         const handshakeResponse = this.server.emit('handshake', this, message);
 
-        if (!handshakeResponse)
+        if (!handshakeResponse) {
+            debug(`There is no handshake listener, resolving the handshake by default...`);
             message.resolve();
+        }
     }
 
 
@@ -154,9 +176,11 @@ class ServerConnection extends EventEmitterExtra {
         const deferred = this.deferreds_[message.id];
 
         if (message.err) {
+            debug(`Response (rejecting) recieved: ${message}`);
             const err = assign(new Error(), message.err);
             deferred.reject(err);
         } else {
+            debug(`Response (resolving) recieved: ${message}`);
             deferred.resolve(message.payload);
         }
 
@@ -165,24 +189,33 @@ class ServerConnection extends EventEmitterExtra {
 
 
     onPing_(message) {
+        debug(`Ping request recieved, responding with "pong"...`);
         this
             .send_(message.createResponse(null, 'pong'))
             .catch(err => {
+                debug(`Could not send ping response: ${err}`);
                 console.log('Ping responce failed to send', err);
             });
     }
 
 
     onError_(err) {
+        debug(`Native "error" event recieved, emitting line's "error" event: ${err}`);
         this.emit(ServerConnection.Events.ERROR, err);
+        debug(`And manually calling "onClose_"...`);
         this.onClose_(500, err);
     }
 
 
     onClose_(code, message) {
-        if (this.state == ServerConnection.States.CLOSE)
-            return;
+        debug(`Native "close" event recieved with code ${code}: ${message}`);
 
+        if (this.state == ServerConnection.States.CLOSE) {
+            debug(`Connection's state is already closed, ignoring...`);
+            return;
+        }
+
+        debug(`Removing connection from all rooms, rejecting all waiting messages...`);
         this.server.rooms.removeFromAll(this);
         this.server.rooms.root.remove(this);
 
@@ -191,6 +224,7 @@ class ServerConnection extends EventEmitterExtra {
         });
         this.deferreds_ = {};
 
+        debug(`Emitting line's "close" event...`);
         this.state = ServerConnection.States.CLOSE;
         this.emit(ServerConnection.Events.CLOSE, code, message);
     }
@@ -277,6 +311,7 @@ class ServerConnection extends EventEmitterExtra {
             .then(_ => {
                 const deferred = this.deferreds_[message.id] = new Deferred({
                     onExpire: () => {
+                        debug(`Message #${message.id} timeout!`);
                         delete this.deferreds_[message.id];
                     },
                     timeout: this.server.options.timeout
@@ -312,6 +347,7 @@ class ServerConnection extends EventEmitterExtra {
 
     send_(message) {
         return new Promise((resolve, reject) => {
+            debug(`Sending message: ${message}`);
             this.socket.send(message.toString(), err => {
                 if (err) return reject(err);
                 resolve();
@@ -327,9 +363,11 @@ class ServerConnection extends EventEmitterExtra {
      * @memberOf ServerConnection
      */
     ping() {
+        debug(`Pinging...`);
         return this
             .send(Message.Names.PING)
             .catch(err => {
+                debug(`Ping failed: ${err.toString()}`);
                 this.close(410, new Error('Ping failed, dead connection'));
                 throw err;
             });
@@ -344,6 +382,7 @@ class ServerConnection extends EventEmitterExtra {
      * @returns {Promise}
      */
     close(code, data) {
+        debug(`Closing the connection...`);
         return new Promise(resolve => {
             this.socket.close(code, data);
             resolve();

@@ -2,6 +2,7 @@ const WebSocketServer = require('uws').Server;
 const Connection = require('./connection');
 const Rooms = require('./rooms');
 const EventEmitterExtra = require('event-emitter-extra/dist/commonjs.modern');
+const debug = require('debug')('line:server');
 
 
 /**
@@ -43,6 +44,8 @@ class Server extends EventEmitterExtra {
             reconnectIncrementFactor: 2,
             pingInterval: 60000
         }, options);
+
+        debug(`Initalizing with options: ${JSON.stringify(this.options)}`);
     }
 
     /**
@@ -62,14 +65,21 @@ class Server extends EventEmitterExtra {
      */
     start() {
         if (!this.options.port) {
+            debug(`Starting without port...`);
             this.server = new WebSocketServer(this.options);
             this.bindEvents();
             return Promise.resolve();
         }
 
         return new Promise((resolve, reject) => {
+            debug(`Starting with port "${this.options.port}" ...`);
+
             this.server = new WebSocketServer(this.options, err => {
-                if (err) return reject(err);
+                if (err) {
+                    debug(`Could not start: ${err}`);
+                    return reject(err);
+                }
+
                 this.bindEvents();
                 resolve();
             });
@@ -94,11 +104,13 @@ class Server extends EventEmitterExtra {
      */
     stop() {
         if (!this.server) {
+            debug(`Could not stop server. Server is probably not started, or already stopped.`);
             const err = new Error('Could not stop server. Server is probably not started, or already stopped.');
             return Promise.reject(err);
         }
 
         return new Promise(resolve => {
+            debug(`Closing and disposing the server...`);
             this.server.close();
             this.server = null;
             resolve();
@@ -107,6 +119,8 @@ class Server extends EventEmitterExtra {
 
 
     bindEvents() {
+        debug(`Binding server events...`);
+
         this.server.on('connection', this.onConnection.bind(this));
         this.server.on('headers', this.onHeaders.bind(this));
         this.server.on('error', this.onError.bind(this));
@@ -114,17 +128,24 @@ class Server extends EventEmitterExtra {
 
 
     onConnection(socket) {
+        debug(`Native "connection" event recieved, creating line connection...`);
         const connection = new Connection(socket, this);
-        connection.on(Connection.Events.HANDSHAKE_OK, () => this.emit(Server.Events.CONNECTION, connection));
+
+        connection.on(Connection.Events.HANDSHAKE_OK, () => {
+            debug(`Handshake OK, emitting line's "connection" event...`);
+            this.emit(Server.Events.CONNECTION, connection);
+        });
     }
 
 
     onHeaders(headers) {
+        debug(`Native "headers" event recieved, emitting line's "headers" event... (${headers})`);
         this.emit(Server.Events.HEADERS, headers);
     }
 
 
     onError(err) {
+        debug(`Native "error" event recieved, emitting line's "error" event... (${err})`);
         this.emit(Server.Events.ERROR, err);
     }
 
@@ -167,6 +188,7 @@ class Server extends EventEmitterExtra {
      * server.broadcast('hello', {world: ''});
      */
     broadcast(eventName, payload) {
+        debug(`Broadcasting "${eventName}" event...`);
         this.rooms.root.broadcast(eventName, payload);
     }
 
