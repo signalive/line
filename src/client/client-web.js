@@ -61,6 +61,8 @@ class Client extends EventEmitterExtra {
         this.connectDeferred_ = null;
         this.connectError_ = null;
         this.disconnectDeferred_ = null;
+        this.disconnectTimeoutDuration_ = 30000;
+        this.disconnectTimeout_ = null;
 
 
         this.state = Client.States.READY;
@@ -164,6 +166,15 @@ class Client extends EventEmitterExtra {
                 this.reconnectDisabled_ = !opt_retry;
                 this.disconnectDeferred_ = new Deferred();
                 this.state = Client.States.CLOSING;
+
+                // Wait "close"" event for some time, manually start onClose procedure
+                if (this.disconnectTimeout_) clearTimeout(this.disconnectTimeout_);
+                this.disconnectTimeout_ = setTimeout(() => {
+                    debug(`Disconnect timeout exceeded, force disconnecting...`);
+                    this.onClose(new Error(`Disconnect timeout exceeded, force disconnecting...`));
+                    clearTimeout(this.disconnectTimeout_);
+                }, this.disconnectTimeoutDuration_);
+
                 return this.disconnectDeferred_;
             case Client.States.CLOSED:
                 return Promise.reject(new Error('There is no connection to disconnect.'));
@@ -251,6 +262,7 @@ class Client extends EventEmitterExtra {
     onClose(err) {
         debug('Native "close" event reveived.');
         debug(`State=${this.state}`);
+        if (this.disconnectTimeout_) clearTimeout(this.disconnectTimeout_);
         this.unBindEvents_();
         this.id = null;
         this.ws_ = null;
