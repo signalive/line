@@ -159,9 +159,10 @@ class Client extends EventEmitterExtra {
             case Client.States.CONNECTED:
             case Client.States.CONNECTING:
                 debug('Disconnecting...');
+                this.ws_.close(code || 1000, reason);
+                debug('Websocket closed!');
                 this.reconnectDisabled_ = !opt_retry;
                 this.disconnectDeferred_ = new Deferred();
-                this.ws_.close(code, reason);
                 this.state = Client.States.CLOSING;
                 return this.disconnectDeferred_;
             case Client.States.CLOSED:
@@ -466,6 +467,7 @@ class Client extends EventEmitterExtra {
 
     send_(message) {
         return new Promise(resolve => {
+            debug(`Sending message: ${message.toString()}`);
             this.ws_.send(message.toString());
             resolve();
         });
@@ -483,7 +485,8 @@ class Client extends EventEmitterExtra {
         return this
             .send(Message.Names.PING)
             .catch(err => {
-                this.disconnect(500, 'Auto ping failed', true);
+                debug('Auto-ping failed, manually disconnecting...');
+                this.disconnect(4500, 'Auto ping failed', true);
                 throw err;
             });
     }
