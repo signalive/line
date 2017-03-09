@@ -51,11 +51,11 @@ class Client extends EventEmitterExtra {
         this.reconnect = isBoolean(options.reconnect) ? options.reconnect : true;
         this.reconnectDisabled_ = false;
 
-        this.serverTimeout_ = 30000;
+        this.serverTimeout_ = 10000;
         this.maxReconnectDelay = 60;
         this.initialReconnectDelay = 1;
-        this.reconnectIncrementFactor = 2;
-        this.pingInterval = 60000;
+        this.reconnectIncrementFactor = 1.5;
+        this.pingInterval = 30000;
 
         this.deferreds_ = {};
         this.connectDeferred_ = null;

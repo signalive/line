@@ -20,11 +20,11 @@ const debug = require('debug')('line:server');
  * @param {boolean=} options.noServer Inherited from uws, [see docs](https://github.com/websockets/ws/blob/master/doc/ws.md#new-websocketserveroptions-callback).
  * @param {boolean=} options.clientTracking Inherited from uws, [see docs](https://github.com/websockets/ws/blob/master/doc/ws.md#new-websocketserveroptions-callback).
  * @param {Object=} options.perMessageDeflate Inherited from uws, [see docs](https://github.com/websockets/ws/blob/master/doc/ws.md#optionspermessagedeflate).
- * @param {number=} options.timeout Timeout duration (in ms) for message responses. Default: 30 seconds
+ * @param {number=} options.timeout Timeout duration (in ms) for message responses. Default: 10 seconds
  * @param {number=} options.maxReconnectDelay Maximum reconnection delay (in seconds) for clients. Default: 60 seconds
  * @param {number=} options.initialReconnectDelay Intial reconnection delay (in seconds) for clients. Defualt: 1 seconds
- * @param {number=} options.reconnectIncrementFactor Reconnection incremental factor for clients. Default: 2
- * @param {number=} options.pingInterval Ping interval (in ms) for both server and client. Default: 60 seconds.
+ * @param {number=} options.reconnectIncrementFactor Reconnection incremental factor for clients. Default: 1.5
+ * @param {number=} options.pingInterval Ping interval (in ms) for both server and client. Default: 30 seconds.
  * @example
  * const Server = require('line-socket/server');
  * const server = new Server({
@@ -38,11 +38,11 @@ class Server extends EventEmitterExtra {
         this.rooms = new Rooms();
 
         this.options = Object.assign({
-            timeout: 30000,
+            timeout: 10000,
             maxReconnectDelay: 60,
             initialReconnectDelay: 1,
-            reconnectIncrementFactor: 2,
-            pingInterval: 60000
+            reconnectIncrementFactor: 1.5,
+            pingInterval: 30000
         }, options);
 
         debug(`Initalizing with options: ${JSON.stringify(this.options)}`);
