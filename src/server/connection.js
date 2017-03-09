@@ -135,9 +135,9 @@ class ServerConnection extends EventEmitterExtra {
                     this.emit(ServerConnection.Events.HANDSHAKE_OK);
                 })
                 .catch(err => {
-                    debug(`Handshake resolving response could not sent, manually calling "onClose_"...`);
+                    debug(`Handshake resolving response could not sent, manually calling "close"...`);
                     console.log(`Handshake resolve response failed to send for ${this.id}.`);
-                    this.onClose_(500, err);
+                    this.close(4500, err && err.toString());
                 })
                 .then(() => {
                     message.dispose();
@@ -152,11 +152,11 @@ class ServerConnection extends EventEmitterExtra {
             this
                 .send_(message.createResponse(err))
                 .catch(err_ => {
-                    debug(`Handshake rejecting response could not sent, manually calling "onClose_"...`);
+                    debug(`Handshake rejecting response could not sent, manually calling "close"...`);
                     console.log(`Handshake reject response failed to send for ${this.id}.`);
                 })
                 .then(() => {
-                    this.onClose_(500, err);
+                    this.close(4500, err.message);
                     message.dispose();
                 });
         });
@@ -202,8 +202,13 @@ class ServerConnection extends EventEmitterExtra {
     onError_(err) {
         debug(`Native "error" event recieved, emitting line's "error" event: ${err}`);
         this.emit(ServerConnection.Events.ERROR, err);
-        debug(`And manually calling "onClose_"...`);
-        this.onClose_(500, err);
+        debug(`And manually calling "close"...`);
+        this.close(4500, err && err.toString());
+    }
+
+
+    close(code, message) {
+        this.socket.close(code, message);
     }
 
 
