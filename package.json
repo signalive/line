@@ -1,6 +1,6 @@
 {
   "name": "line-socket",
-  "version": "0.1.8",
+  "version": "0.1.10",
   "main": "dist/index.js",
   "scripts": {
     "build": "webpack -p",
@@ -26,6 +26,7 @@
   "description": "",
   "dependencies": {
     "@types/es6-promise": "0.0.32",
+    "debug": "^2.6.1",
     "event-emitter-extra": "0.1.7",
     "lodash": "4.16.6",
     "node-uuid": "1.4.7",
