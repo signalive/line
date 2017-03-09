@@ -481,10 +481,17 @@ class Client extends EventEmitterExtra {
      * @returns {Promise}
      */
     ping() {
+        const currentSocket = this.ws_;
+
         debug('Pinging...');
         return this
             .send(Message.Names.PING)
             .catch(err => {
+                if (this.ws_ != currentSocket) {
+                    debug('Auto-ping failed, but socket is also changed, dismissing...');
+                    return;
+                }
+
                 debug('Auto-ping failed, manually disconnecting...');
                 this.disconnect(4500, 'Auto ping failed', true);
                 throw err;
