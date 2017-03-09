@@ -478,9 +478,9 @@ var ServerConnection = function (_EventEmitterExtra) {
                     _this3.server.rooms.root.add(_this3);
                     _this3.emit(ServerConnection.Events.HANDSHAKE_OK);
                 }).catch(function (err) {
-                    debug('Handshake resolving response could not sent, manually calling "onClose_"...');
+                    debug('Handshake resolving response could not sent, manually calling "close"...');
                     console.log('Handshake resolve response failed to send for ' + _this3.id + '.');
-                    _this3.onClose_(500, err);
+                    _this3.close(4500, err && err.toString());
                 }).then(function () {
                     message.dispose();
                 });
@@ -491,10 +491,10 @@ var ServerConnection = function (_EventEmitterExtra) {
                 if (isObject(err) && err instanceof Error) err = assign({ message: err.message, name: 'Error' }, err);
 
                 _this3.send_(message.createResponse(err)).catch(function (err_) {
-                    debug('Handshake rejecting response could not sent, manually calling "onClose_"...');
+                    debug('Handshake rejecting response could not sent, manually calling "close"...');
                     console.log('Handshake reject response failed to send for ' + _this3.id + '.');
                 }).then(function () {
-                    _this3.onClose_(500, err);
+                    _this3.close(4500, err.message);
                     message.dispose();
                 });
             });
@@ -538,8 +538,13 @@ var ServerConnection = function (_EventEmitterExtra) {
         value: function onError_(err) {
             debug('Native "error" event recieved, emitting line\'s "error" event: ' + err);
             this.emit(ServerConnection.Events.ERROR, err);
-            debug('And manually calling "onClose_"...');
-            this.onClose_(500, err);
+            debug('And manually calling "close"...');
+            this.close(4500, err && err.toString());
+        }
+    }, {
+        key: 'close',
+        value: function close(code, message) {
+            this.socket.close(code, message);
         }
     }, {
         key: 'onClose_',

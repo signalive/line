@@ -3495,9 +3495,10 @@ var Client = function (_EventEmitterExtra) {
                 case Client.States.CONNECTED:
                 case Client.States.CONNECTING:
                     debug('Disconnecting...');
+                    this.ws_.close(code || 1000, reason);
+                    debug('Websocket closed!');
                     this.reconnectDisabled_ = !opt_retry;
                     this.disconnectDeferred_ = new Deferred();
-                    this.ws_.close(code, reason);
                     this.state = Client.States.CLOSING;
                     return this.disconnectDeferred_;
                 case Client.States.CLOSED:
@@ -3803,6 +3804,7 @@ var Client = function (_EventEmitterExtra) {
             var _this7 = this;
 
             return new Promise(function (resolve) {
+                debug('Sending message: ' + message.toString());
                 _this7.ws_.send(message.toString());
                 resolve();
             });
@@ -3822,7 +3824,8 @@ var Client = function (_EventEmitterExtra) {
 
             debug('Pinging...');
             return this.send(Message.Names.PING).catch(function (err) {
-                _this8.disconnect(500, 'Auto ping failed', true);
+                debug('Auto-ping failed, manually disconnecting...');
+                _this8.disconnect(4500, 'Auto ping failed', true);
                 throw err;
             });
         }
