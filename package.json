@@ -1,6 +1,6 @@
 {
   "name": "line-socket",
-  "version": "0.1.10",
+  "version": "1.0.0-beta.1",
   "main": "dist/index.js",
   "scripts": {
     "build": "webpack -p",
@@ -12,8 +12,14 @@
     "postinstall": "./scripts/symlink.sh",
     "test": "mocha test/runner.js"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "websocket",
+    "websockets",
+    "socket",
+    "real-time",
+    "RFC-6455"
+  ],
+  "author": "Signalive Tech <tech@signalive.io>",
   "license": "ISC",
   "repository": {
     "type": "git",
