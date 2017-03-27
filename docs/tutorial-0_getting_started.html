@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Home - Documentation</title>
+    <title>Getting Started - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -27,93 +27,16 @@
 
 <div id="main">
     
-
+    <h1 class="page-title">Getting Started</h1>
     
 
+    <section>
 
+<article>
+    <p>TODO</p>
+</article>
 
-    
-
-
-
-
-
-
-
-
-
-    
-
-
-    <section class="readme">
-        <article><h1>line</h1><p><a href="https://travis-ci.org/signalive/line"><img src="https://travis-ci.org/signalive/line.svg?branch=master" alt="Build Status"></a>
-<a href="https://coveralls.io/github/signalive/line?branch=master"><img src="https://coveralls.io/repos/github/signalive/line/badge.svg?branch=master" alt="Coverage Status"></a></p>
-<p><em>line</em> is a lightweight and efficient (web)-socket library that bears non-blocking interface and scalable architecture.  <em>line</em> is <strong>fast</strong>, <strong>reliable</strong> and yet it supports <strong>message responses</strong>, <strong>response timeouts</strong> and <strong>client rooms</strong>. <em>line</em> internally monitors connection health, and it pro-actively strives to achieve a stable connection.</p>
-<p>We built <em>line</em> on top of the fastest socket implementation in the Node.JS ecosystem, <a href="https://github.com/uWebSockets/uWebSockets">uWebSockets</a>. In that respect, it consumes order of magnitude <strong>less memory</strong> when compared to socket.io and it's kinds. <em>line</em> runs on Node.JS and all modern browsers through an identical API. Therefore, it is a good candidate for cross-platform applications.</p>
-<h2>Key Features</h2><ul>
-<li>Automated tests with significant code coverage</li>
-<li><strong>Cross platform</strong>: Works on MacOS, Linux, Windows and browsers</li>
-<li>Developed in ES6 with Webpack, therefore we have a minified bundles that work nearly every platform without hassle</li>
-<li>Apart from uWebSockets, we support <strong>message responses</strong>, <strong>request timeouts</strong>, <strong>handshaking</strong> and <strong>client rooms</strong></li>
-<li><strong>Easy configuring</strong>: Configurations are asserted on server side and pushed to clients at handshake. No need to do configurations at the client side.</li>
-<li>Promise based API</li>
-</ul>
-<hr>
-<h2>Installation</h2><p>Using yarn</p>
-<pre class="prettyprint source"><code>yarn add line-socket</code></pre><p>Using npm</p>
-<pre class="prettyprint source lang-sh"><code>npm install line-socket --save</code></pre><h2>Usage</h2><h3>Server</h3><pre class="prettyprint source lang-js"><code>const Server = require('line-socket/server');
-const server = new Server({port: 3000});
-
-server.on('connection', function(connection) {
-    console.log('A client connected');
-
-    connection.on('hello', (message) => {
-        console.log('Received a hello messge', message.payload); // => {name: 'some client'}
-
-        setTimeout(() => {
-            message.resolve({hello: 'yourself'});
-        }, 2000)
-    });
-})
-
-
-server
-    .start() // Start listening port 3000
-    .then(() => {
-        console.log('Server started');
-    })
-    .catch((err) => {
-        console.log(`Server could not started`, err);
-    });</code></pre><h3>Client (NodeJS)</h3><pre class="prettyprint source lang-js"><code>const LineClient = require('line-socket/client-node');
-const client = new LineClient('ws://localhost:3000');
-
-client.on('_connected', () => {
-    console.log('Connected to server');
-
-    client
-        .send('hello', {name: 'some client'})
-        .then((data) => {
-            console.log('Greeting completed', data); // => {hello: 'yourself'}
-        })
-        .catch((err) => {
-            // Message could not sent OR
-            // Message response timeout OR
-            // Server rejects the message
-        });
-});
-
-client.connect();</code></pre><h3>Client (Browser)</h3><p>We provide client constructor as LineClient global reference. In order to run line client on browser, you must include the browser bundle into your HTML file as below and then use it by creating an instance from <em>LineClient</em> class.</p>
-<pre class="prettyprint source"><code>&lt;script src=&quot;../dist/client-web-globals.js&quot;>&lt;/script></code></pre><pre class="prettyprint source lang-js"><code>const client = new LineClient('ws://localhost:3000');
-
-/* The rest is identical to the NodeJS example */</code></pre><h2>Documentation</h2><p>Extended documentation can be found <a href="https://signalive.github.io/line">here</a>.</p>
-<hr>
-<h2>License</h2><p><a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" /></a><br /><br /><span xmlns:dct="http://purl.org/dc/terms/" property="dct:title"><strong><em>line</em></strong></span> by <span xmlns:cc="http://creativecommons.org/ns#" property="cc:attributionName">SignAlive</span> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.</p></article>
-    </section>
-
-
-
-
-
+</section>
 
 </div>
 
