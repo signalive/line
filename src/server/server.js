@@ -1,30 +1,29 @@
 const WebSocketServer = require('uws').Server;
 const Connection = require('./connection');
+const Message = require('../lib/message');
 const Rooms = require('./rooms');
-const EventEmitterExtra = require('event-emitter-extra/dist/commonjs.modern');
+const EventEmitterExtra = require('event-emitter-extra');
 const debug = require('debug')('line:server');
+const LineError = require('../lib/error');
+const assign = require('lodash/assign');
+const isInteger = require('lodash/isInteger');
 
 
 /**
  * Line Server Class
- * Documentation is here deneme
  *
  * @class Server
  * @extends {EventEmitterExtra}
  * @param {Object=} options Options object.
- * @param {string=} options.host Server host name. Inherited from uws, [see docs](https://github.com/websockets/ws/blob/master/doc/ws.md#new-websocketserveroptions-callback).
- * @param {number=} options.port Server port. Inherited from uws, [see docs](https://github.com/websockets/ws/blob/master/doc/ws.md#new-websocketserveroptions-callback).
- * @param {http.Server=} options.server Server object to be attached. If provided, `host` and `port` will ignored. Inherited from uws, [see docs](https://github.com/websockets/ws/blob/master/doc/ws.md#new-websocketserveroptions-callback).
- * @param {Function=} options.handleProtocols Inherited from uws, [see docs](https://github.com/websockets/ws/blob/master/doc/ws.md#optionshandleprotocols).
- * @param {string=} options.path Inherited from uws, [see docs](https://github.com/websockets/ws/blob/master/doc/ws.md#new-websocketserveroptions-callback).
- * @param {boolean=} options.noServer Inherited from uws, [see docs](https://github.com/websockets/ws/blob/master/doc/ws.md#new-websocketserveroptions-callback).
- * @param {boolean=} options.clientTracking Inherited from uws, [see docs](https://github.com/websockets/ws/blob/master/doc/ws.md#new-websocketserveroptions-callback).
- * @param {Object=} options.perMessageDeflate Inherited from uws, [see docs](https://github.com/websockets/ws/blob/master/doc/ws.md#optionspermessagedeflate).
- * @param {number=} options.timeout Timeout duration (in ms) for message responses. Default: 10 seconds
- * @param {number=} options.maxReconnectDelay Maximum reconnection delay (in seconds) for clients. Default: 60 seconds
- * @param {number=} options.initialReconnectDelay Intial reconnection delay (in seconds) for clients. Defualt: 1 seconds
- * @param {number=} options.reconnectIncrementFactor Reconnection incremental factor for clients. Default: 1.5
- * @param {number=} options.pingInterval Ping interval (in ms) for both server and client. Default: 30 seconds.
+ * @param {string=} options.host The hostname where to bind the server. [Inherited from uws.](https://github.com/websockets/ws/blob/master/doc/ws.md#new-websocketserveroptions-callback)
+ * @param {number=} options.port The port where to bind the server. [Inherited from uws.](https://github.com/websockets/ws/blob/master/doc/ws.md#new-websocketserveroptions-callback)
+ * @param {http.Server=} options.server A pre-created Node.js HTTP server. If provided, `host` and `port`
+ *      will ignored. [Inherited from uws.](https://github.com/websockets/ws/blob/master/doc/ws.md#new-websocketserveroptions-callback)
+ * @param {string=} options.path Accept only connections matching this path. [Inherited from uws](https://github.com/websockets/ws/blob/master/doc/ws.md#new-websocketserveroptions-callback)
+ * @param {number=} options.responseTimeout Default timeout duration (in ms) for message responses. Default: `10000` (10 seconds)
+ * @param {number=} options.handshakeTimeout This is the duration how long a client can stay connected
+ *      without handshake. Default `60000` (1 minute).
+ * @param {number=} options.pingInterval Ping interval in ms. Default: 15 seconds.
  * @example
  * const Server = require('line-socket/server');
  * const server = new Server({
@@ -35,15 +34,22 @@ class Server extends EventEmitterExtra {
     constructor(options = {}) {
         super();
 
-        this.rooms = new Rooms();
-
-        this.options = Object.assign({
-            timeout: 10000,
-            maxReconnectDelay: 60,
-            initialReconnectDelay: 1,
-            reconnectIncrementFactor: 1.5,
-            pingInterval: 30000
+        this.options = assign({
+            responseTimeout: 10000,
+            handshakeTimeout: 60000,
+            pingInterval: 15000
         }, options);
+
+        if (!isInteger(this.options.responseTimeout) || this.options.responseTimeout < 0)
+            throw new LineError(Server.ErrorCode.INVALID_OPTIONS, `"options.responseTimeout" must be a positive integer or zero`);
+
+        if (!isInteger(this.options.handshakeTimeout) || this.options.handshakeTimeout < 0)
+            throw new LineError(Server.ErrorCode.INVALID_OPTIONS, `"options.handshakeTimeout" must be a positive integer or zero`);
+
+        if (!isInteger(this.options.pingInterval) || this.options.pingInterval < 0)
+            throw new LineError(Server.ErrorCode.INVALID_OPTIONS, `"options.pingInterval" must be a positive integer or zero`);
+
+        this.rooms = new Rooms();
 
         debug(`Initalizing with options: ${JSON.stringify(this.options)}`);
     }
@@ -64,11 +70,27 @@ class Server extends EventEmitterExtra {
      *   });
      */
     start() {
+        if (this.server) {
+            return Promise.reject(new LineError(
+                Server.ErrorCode.INVALID_ACTION,
+                `Could not start server, already started!`
+            ));
+        }
+
         if (!this.options.port) {
             debug(`Starting without port...`);
-            this.server = new WebSocketServer(this.options);
-            this.bindEvents();
-            return Promise.resolve();
+
+            try {
+                this.server = new WebSocketServer(this.options);
+                this.bindEvents_();
+                return Promise.resolve();
+            } catch (err) {
+                return Promise.reject(new LineError(
+                    Server.ErrorCode.WEBSOCKET_ERROR,
+                    `Could not start the server, websocket error, check payload`,
+                    err
+                ));
+            }
         }
 
         return new Promise((resolve, reject) => {
@@ -77,10 +99,14 @@ class Server extends EventEmitterExtra {
             this.server = new WebSocketServer(this.options, err => {
                 if (err) {
                     debug(`Could not start: ${err}`);
-                    return reject(err);
+                    return reject(new LineError(
+                        Server.ErrorCode.WEBSOCKET_ERROR,
+                        `Could not start the server, websocket error, check payload`,
+                        err
+                    ));
                 }
 
-                this.bindEvents();
+                this.bindEvents_();
                 resolve();
             });
         })
@@ -105,8 +131,10 @@ class Server extends EventEmitterExtra {
     stop() {
         if (!this.server) {
             debug(`Could not stop server. Server is probably not started, or already stopped.`);
-            const err = new Error('Could not stop server. Server is probably not started, or already stopped.');
-            return Promise.reject(err);
+            return Promise.reject(new LineError(
+                Server.ErrorCode.INVALID_ACTION,
+                `Could not stop server. Server is probably not started, or already stopped!`
+            ));
         }
 
         return new Promise(resolve => {
@@ -118,35 +146,53 @@ class Server extends EventEmitterExtra {
     }
 
 
-    bindEvents() {
+    /**
+     * Binds websocket server events.
+     *
+     * @ignore
+     */
+    bindEvents_() {
         debug(`Binding server events...`);
 
-        this.server.on('connection', this.onConnection.bind(this));
-        this.server.on('headers', this.onHeaders.bind(this));
-        this.server.on('error', this.onError.bind(this));
+        this.server.on('connection', this.onConnection_.bind(this));
+        this.server.on('headers', this.onHeaders_.bind(this));
+        this.server.on('error', this.onError_.bind(this));
     }
 
 
-    onConnection(socket) {
+    /**
+     * Native "connection" event handler.
+     *
+     * @param {WebSocket} socket
+     * @ignore
+     */
+    onConnection_(socket) {
         debug(`Native "connection" event recieved, creating line connection...`);
         const connection = new Connection(socket, this);
-
-        connection.on(Connection.Events.HANDSHAKE_OK, () => {
-            debug(`Handshake OK, emitting line's "connection" event...`);
-            this.emit(Server.Events.CONNECTION, connection);
-        });
     }
 
 
-    onHeaders(headers) {
+    /**
+     * Native "headers" event handler.
+     *
+     * @param {Array} headers
+     * @ignore
+     */
+    onHeaders_(headers) {
         debug(`Native "headers" event recieved, emitting line's "headers" event... (${headers})`);
-        this.emit(Server.Events.HEADERS, headers);
+        this.emit(Server.Event.HEADERS, headers);
     }
 
 
-    onError(err) {
+    /**
+     * Native "error" event handler.
+     *
+     * @param {Error} err
+     * @ignore
+     */
+    onError_(err) {
         debug(`Native "error" event recieved, emitting line's "error" event... (${err})`);
-        this.emit(Server.Events.ERROR, err);
+        this.emit(Server.Event.ERROR, err);
     }
 
 
@@ -170,8 +216,9 @@ class Server extends EventEmitterExtra {
      * @example
      * const connection = server.getConnectionById('someId');
      *
-     * if (connection)
-     *   connection.send('hello', {world: ''});
+     * if (connection) {
+     *   connection.send('hello', {optional: 'payload'});
+     * }
      */
     getConnectionById(id) {
         return this.rooms.root.getConnectionById(id);
@@ -179,17 +226,17 @@ class Server extends EventEmitterExtra {
 
 
     /**
-     * Broadcasts a message to all the connected clients.
+     * Broadcasts a message to all the connected (& handshaked) clients.
      *
-     * @param {string} eventName Event name
+     * @param {string} name Message name
      * @param {any=} payload Optional message payload.
      * @memberOf Server
      * @example
-     * server.broadcast('hello', {world: ''});
+     * server.broadcast('hello', {optional: 'payload'});
      */
-    broadcast(eventName, payload) {
-        debug(`Broadcasting "${eventName}" event...`);
-        this.rooms.root.broadcast(eventName, payload);
+    broadcast(name, payload) {
+        debug(`Broadcasting "${name}" message...`);
+        this.rooms.root.broadcast(name, payload); // Can throw INVALID_JSON
     }
 
 
@@ -222,6 +269,33 @@ class Server extends EventEmitterExtra {
 }
 
 
+// Expose internal classes
+Server.Message = Message;
+Server.Connection = Connection;
+Server.Error = LineError;
+
+
+/**
+ * @static
+ * @readonly
+ * @enum {string}
+ */
+Server.ErrorCode = {
+    /**
+     * When constructing `new Server()`, this error could be thrown.
+     */
+    INVALID_OPTIONS: 'sInvalidOptions',
+    /**
+     * This error can be seen in rejection of `server.start()` or `server.stop()` methods.
+     */
+    INVALID_ACTION: 'sInvalidAction',
+    /**
+     * This error is for native websocket errors.
+     */
+    WEBSOCKET_ERROR: 'sWebsocketError'
+};
+
+
 /**
  * @static
  * @readonly
@@ -232,36 +306,27 @@ class Server extends EventEmitterExtra {
  *   ...
  * });
  *
- * // or
+ * // or better, you can use enums
  *
- * server.on(Server.Events.CONNECTION, (connection) => {
+ * server.on(Server.Event.CONNECTION, (connection) => {
  *   connection.send('hello');
  *   ...
  * });
  *
  * // If you want to authorize your client
  * server.on('handshake', (connection, handshake) => {
- *   if (handshake.payload.token == 'test')
- *     handshake.resolve();
+ *   if (handshake.payload && handshake.payload.authToken == '...')
+ *     handshake.resolve({welcome: 'bro'});
  *   else
- *     handshake.reject(new Error('Invalid token'));
+ *     handshake.reject(new Error('Invalid auth token'));
  * });
  */
-Server.Events = {
+Server.Event = {
     /**
-     * `'connection'` This event will fire on a client connects **after successful handshake**.
-     *
-     * ```
-     * function (connection) {}
-     * ```
-     *
-     * where `connection` is a `ServerConnection` instance.
-     */
-    CONNECTION: 'connection',
-    /**
-     * `'handshake'` When a client connection is established, this event will be fired before
-     * `connection` event. If you want to authorize your clients, you must listen this event and
-     * call `handshake.resolve(payload)` or `handshake.reject(err)` accordingly. If you do not consume
+     * `handshake` When a client connection is established, this event will be fired before
+     * `connection` event. Please note that, this event has nothing in common with native websocket
+     * handshaking process. If you want to authorize your clients, you must listen this event and
+     * call `handshake.resolve(...)` or `handshake.reject(...)` accordingly. If you do not consume
      * this events, all the client connections will be accepted.
      *
      * ```
@@ -271,6 +336,16 @@ Server.Events = {
      * where `connection` is `ServerConnection` and `handshake` is a `Message` instance.
      */
     HANDSHAKE: 'handshake',
+    /**
+     * `connection` This event will fire on a client connects **after successful handshake**.
+     *
+     * ```
+     * function (connection) {}
+     * ```
+     *
+     * where `connection` is a `ServerConnection` instance.
+     */
+    CONNECTION: 'connection',
     /**
      * `'headers'` Inherited from uws, [see docs](https://github.com/websockets/ws/blob/master/doc/ws.md#event-headers)
      */

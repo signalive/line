@@ -1,11 +1,22 @@
 declare module 'line-socket/client-web' {
     import EventEmitterExtra = require('event-emitter-extra');
 
-    type LineClientState = -1 | 0 | 1 | 2 | 3;
-    type LineClientEvent = '_connecting' | '_connecting_error' | '_connected' | '_closed' | '_error';
+    type LineClientState = 'ready' | 'connecting' | 'handshaking' | 'connected' | 'disconnecting' | 'disconnected';
+    type LineClientEvent = '_connecting' | '_connecting_error' | '_connected' | '_disconnecting' | '_disconnected' | '_error';
+    type LineClientErrorCode = 'cInvalidOptions' |
+        'cInvalidJSON' |
+        'cHandshakeError' |
+        'cHandshakeRejected' |
+        'cMessageTimeout' |
+        'cMessageRejected' |
+        'cMessageNotResponded' |
+        'cWebsocketError' |
+        'cDisconnectError' |
+        'cPingError' |
+        'cDisconnected';
 
     class LineClient extends EventEmitterExtra {
-        static Events: {
+        static Event: {
             CONNECTING: LineClientEvent,
             CONNECTING_ERROR: LineClientEvent,
             CONNECTED: LineClientEvent,
@@ -13,12 +24,26 @@ declare module 'line-socket/client-web' {
             ERROR: LineClientEvent
         };
 
-        static States: {
+        static State: {
             READY: LineClientState,
             CONNECTING: LineClientState,
+            HANDSHAKING: LineClientState,
             CONNECTED: LineClientState,
-            CLOSING: LineClientState,
-            CLOSED: LineClientState
+            DISCONNECTING: LineClientState,
+            DISCONNECTED: LineClientState
+        };
+
+        static ErrorCode: {
+            INVALID_OPTIONS: LineClientErrorCode,
+            INVALID_JSON: LineClientErrorCode,
+            HANDSHAKE_ERROR: LineClientErrorCode,
+            HANDSHAKE_REJECTED: LineClientErrorCode,
+            MESSAGE_REJECTED: LineClientErrorCode,
+            MESSAGE_NOT_RESPONDED: LineClientErrorCode,
+            WEBSOCKET_ERROR: LineClientErrorCode,
+            DISCONNECT_TIMEOUT: LineClientErrorCode,
+            PING_ERROR: LineClientErrorCode,
+            DISCONNECTED: LineClientErrorCode
         };
 
         id: string;
@@ -26,28 +51,44 @@ declare module 'line-socket/client-web' {
         state: LineClientState;
 
         constructor(url: string, options?: {
+            handshake?: {
+                timeout?: number,
+                payload?: any
+            },
+            responseTimeout?: number,
+            disconnectTimeout?: number,
+            pingInterval?: number,
             reconnect?: boolean,
-            handshakePayload?: any,
-            keepUptime?: boolean
+            reconnectOptions?: {
+                initialDelay?: number,
+                multiply?: number,
+                maxDelay?: number,
+                randomness?: number
+            },
+            uptime?: boolean,
+            uptimeOptions?: {
+                interval?: number,
+                window?: number
+            }
         });
 
-        connect(): Promise<any>;
+        connect(): boolean;
 
         disconnect(
             code?: number,
             reason?: any,
             retry?: boolean
-        ): Promise<any>;
+        ): boolean;
 
         ping(): Promise<any>;
 
         send(
-            eventName: string,
+            name: string,
             payload?: any
         ): Promise<any>;
 
         sendWithoutResponse(
-            eventName: string,
+            name: string,
             payload?: any
         ): Promise<any>;
 

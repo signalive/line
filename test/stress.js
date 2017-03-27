@@ -22,7 +22,7 @@ class StressTestClient {
 
     init() {
         this.client
-            .connect()
+            .connectAsync()
             .then(_ => this.sendTestMessage())
             .catch(err => {
                 vorpal.log('Client could not connect', err);
@@ -43,7 +43,7 @@ class StressTestClient {
         clearTimeout(this.timeout);
 
         this.client
-            .disconnect()
+            .disconnectAsync()
             .catch(err => {
                 vorpal.log('Could not disconnect', err);
             });
@@ -53,7 +53,7 @@ class StressTestClient {
 
 server
     .start()
-    .then(_ => vorpal.log('Server started'))
+    .then(() => vorpal.log('Server started'))
     .catch(err => {
         vorpal.log('Server could not started', err);
         process.exit(1);
@@ -68,7 +68,7 @@ server.on('connection', connection => {
 
 
 setInterval(() => {
-    vorpal.log(`Server connections: ${_.size(server.rooms.getRoom('/').connections)}, Clients: ${clients.length}`);
+    vorpal.log(`Server connections: ${_.size(server.rooms.root.connections)}, Clients: ${clients.length}`);
 }, 2500);
 
 

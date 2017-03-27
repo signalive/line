@@ -41,39 +41,25 @@ Usage
 const Server = require('line-socket/server');
 const server = new Server({port: 3000});
 
-/* Handshaking handler which is called first when a new connections arrives */
-server.on('handshake', (connection, handshake) => {
-	/* handshale.payload is the client's handshake data such as authorization token etc... */
-
-    handshake.resolve(); /* Accept connection */
-    /* handshake.reject(new Error('Sorry bro')) to reject the connection */
-});
-
-/* Connection handler is called after client handshaking succeeds */
 server.on('connection', function(connection) {
     console.log('A client connected');
 
-    connection.on('request', message => {
-        console.log('Received a request', message.payload);
+    connection.on('hello', (message) => {
+        console.log('Received a hello messge', message.payload); // => {name: 'some client'}
 
-        setTimeout(function() {
-            console.log('Responding...');
-            message.resolve({domates: 'patates'});
+        setTimeout(() => {
+            message.resolve({hello: 'yourself'});
         }, 2000)
     });
-
-    connection.on('_close', code => {
-        console.log(` ${code} closed`);
-    })
 })
 
 
 server
     .start() // Start listening port 3000
-    .then(_ => {
+    .then(() => {
         console.log('Server started');
     })
-    .catch(err => {
+    .catch((err) => {
         console.log(`Server could not started`, err);
     });
 ```
@@ -82,36 +68,24 @@ server
 ### Client (NodeJS)
 ```js
 const LineClient = require('line-socket/client-node');
-const client = new LineClient('ws://localhost:3000', {
-    reconnect: true,
-    handshakePayload: {token: 'secret-token-xyz'}
-});
+const client = new LineClient('ws://localhost:3000');
 
+client.on('_connected', () => {
+    console.log('Connected to server');
 
-client
-    .connect()
-    .then(() => {
-        console.log('Client has connected');
-    })
-    .catch(err => {
-        console.log('Connection error', err);
-    });
-
-/* Connected event is fired when handshake is succeed */
-client.on('_connected', function() {
-    console.log(`Client connected`);
-    console.log('Sending message to server');
     client
-        .send('request', {foo: 'bar'})
-        .then(response => {
-            console.log('Response recieved', response);
+        .send('hello', {name: 'some client'})
+        .then((data) => {
+            console.log('Greeting completed', data); // => {hello: 'yourself'}
         })
-        .catch(err => {
-	        /* Requests can fail by response or when timeout exceeds */
-	        console.log('Request failed', err);
+        .catch((err) => {
+            // Message could not sent OR
+            // Message response timeout OR
+            // Server rejects the message
         });
 });
 
+client.connect();
 ```
 
 
@@ -124,10 +98,7 @@ We provide client constructor as LineClient global reference. In order to run li
 ```
 
 ```js
-const client = new LineClient('ws://localhost:3000', {
-    reconnect: true,
-    handshakePayload: {token: 'secret-token-xyz'}
-});
+const client = new LineClient('ws://localhost:3000');
 
 /* The rest is identical to the NodeJS example */
 
