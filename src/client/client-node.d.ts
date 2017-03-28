@@ -20,7 +20,8 @@ declare module 'line-socket/client-node' {
             CONNECTING: LineClientEvent,
             CONNECTING_ERROR: LineClientEvent,
             CONNECTED: LineClientEvent,
-            CLOSED: LineClientEvent,
+            DISCONNECTING: LineClientEvent,
+            DISCONNECTED: LineClientEvent,
             ERROR: LineClientEvent
         };
 

@@ -515,6 +515,7 @@ class Client extends EventEmitterExtra {
 
             debug(`Will try to reconnect in ${timeout} ms`);
 
+            this.reconnectState_.timeout && clearTimeout(this.reconnectState_.timeout);
             this.reconnectState_.timeout = setTimeout(() => {
                 this.reconnectState_.attempt++;
                 this.connect();
