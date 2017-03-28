@@ -1,6 +1,8 @@
 const forEach = require('lodash/forEach');
 const clone = require('lodash/clone');
 const Message = require('../lib/message');
+const debug = require('debug')('line:server:room');
+const LineError = require('../lib/error');
 
 
 /**
@@ -23,6 +25,7 @@ class ServerRoom {
      * @param {ServerConnection} connection
      */
     add(connection) {
+        // TODO: Check current existing connection maybe?
         this.connections[connection.id] = connection;
     }
 
@@ -30,9 +33,17 @@ class ServerRoom {
     /**
      * Removes a connection from room.
      * @param {ServerConnection} connection
+     * @returns {boolean}
      */
     remove(connection) {
+        if (connection != this.connections[connection.id]) {
+            debug(`[${this.name || 'root'}] Did not remove "${connection.id}", connection instance is not added or different`);
+            return false;
+        }
+
+        debug(`[${this.name || 'root'}] Removing "${connection.id}"`);
         delete this.connections[connection.id];
+        return true;
     }
 
 
@@ -64,23 +75,26 @@ class ServerRoom {
         return Object.keys(this.connections).length;
     }
 
+
     broadcast_(message) {
         forEach(this.connections, connection => {
-            connection.send_(message)
+            connection
+                .sendWithoutResponse_(message)
+                .catch((err) => {
+                    debug(`[${this.name || 'root'}] Could not send "${message.name}" to "${connection.id}" while broadcasting, ignoring...`);
+                });
         });
     }
 
 
     /**
      * Broadcast a message to all connections in the room.
-     * @param {string} eventName
+     * @param {string} name
      * @param {any=} payload
      */
-    broadcast(eventName, payload) {
-        const message = new Message({name: eventName, payload});
-        forEach(this.connections, (connection, index) => {
-            connection.send_(message)
-        });
+    broadcast(name, payload) {
+        const message = new Message({name, payload}); // Can throw INVALID_JSON
+        this.broadcast_(message);
     }
 }
 

@@ -38,15 +38,17 @@ server.on('connection', function(connection) {
     connection.on('bsd', message => {
         console.log('received 2', message.payload);
 
-        return new Promise((resolve, reject) => {
-            setTimeout(function() {
-                console.log('responding 2...');
-                message.resolve({domates: 'patates2'});
-            }, 2000)
-        });
+        setTimeout(function() {
+            console.log('responding 2...');
+            message.resolve({domates: 'patates2'});
+        }, 2000)
     });
 
-    connection.on('_close', code => {
-        console.log(` ${code} closed`);
+    connection.on('_close', (code, reason) => {
+        console.log(`Closed. Code: ${code}, Reason: ${reason}`);
     })
+
+    setTimeout(() => {
+        // connection.close(4299, 'Just because');
+    }, 10000);
 })

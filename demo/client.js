@@ -1,26 +1,19 @@
-const client = new LineClient('ws://localhost:3000', {
-    handshakePayload: {hello: 'shake'}
+const client = new LineClient('ws://localhost:3000');
+
+client.on('_connecting_error', function(err) {
+    console.log('connecting error!!!', err);
 });
 
-client
-    .connect()
-    .then(() => {
-        console.log('Our client has connected');
-    })
-    .catch(err => {
-        console.log('Could not connect', err);
-    });
-
-client.on('_connecting_error', function() {
-    console.log('connecting error!!!');
+client.on('_disconnecting', function() {
+    console.log('disconnecting...');
 });
 
-client.on('_closing', function() {
-    console.log('closing...');
+client.on('_disconnecting_error', function(err) {
+    console.log('disconnecting error!!!', err);
 });
 
-client.on('_closed', function() {
-    console.log('closed');
+client.on('_disconnected', function(e) {
+    console.log('disconnected', e.code, e.reason);
 });
 
 client.on('_connected', function() {
@@ -44,19 +37,12 @@ client.on('_connecting', function() {
     console.log('connecting...');
 });
 
-
-client.on('tick', function(message) {
-    console.log('tick received');
+client.on('_error', function(err) {
+    console.log('error', err);
 });
 
+client.connect();
+
 setTimeout(() => {
-    client
-        .disconnect()
-        .then(() => {
-            console.log('disconnected');
-            return client.connect();
-        })
-        .catch(err => {
-            console.log('could not disconnected', err);
-        });
+    // client.disconnect(4201, 'Close close close');
 }, 10000);

@@ -1,18 +1,20 @@
-const Utils = require('../lib/utils');
 const Message = require('../lib/message');
-const EventEmitterExtra = require('event-emitter-extra/dist/commonjs.modern');
+const EventEmitterExtra = require('event-emitter-extra');
 const assign = require('lodash/assign');
 const forEach = require('lodash/forEach');
+const isInteger = require('lodash/isInteger');
 const isObject = require('lodash/isObject');
 const debounce = require('lodash/debounce');
 const Deferred = require('../lib/deferred');
-const uuid = require('node-uuid');
+const uuid = require('uuid');
 const debug = require('debug')('line:server:connection');
+const LineError = require('../lib/error');
+const CloseStatus = require('../lib/closestatus');
 
 
 /**
  * Server connection class. Constructor of this class is not publicly accessible.
- * When you listen `Server.Events.CONNECTION` or `Server.Events.HANDSHAKE`, an instance
+ * When you listen `Server.Event.CONNECTION` or `Server.Event.HANDSHAKE`, an instance
  * of `ServerConnection` will be emitted.
  *
  * @class ServerConnection
@@ -29,155 +31,219 @@ class ServerConnection extends EventEmitterExtra {
 
         this.socket = socket;
         this.server = server;
+        this.state = ServerConnection.State.AWAITING_HANDSHAKE;
 
         this.deferreds_ = {};
-        this.state = ServerConnection.States.OPEN;
-        this.handshakeResolved_ = false;
+        this.autoPing_ = debounce(() => {});
 
         this.socket.on('message', this.onMessage_.bind(this));
         this.socket.on('error', this.onError_.bind(this));
         this.socket.on('close', this.onClose_.bind(this));
 
-        this.autoPing_ = server.options.pingInterval > 0 ?
-            debounce(() => {
-                if (this.state != ServerConnection.States.OPEN) {
-                    debug(`Not auto-pinging, connection state (${this.state}) is not open`);
-                    return;
-                }
-
+        if (server.options.pingInterval > 0) {
+            this.autoPing_ = debounce(() => {
                 this
                     .ping()
                     .then(() => {
                         debug(`Auto-ping successful`);
 
-                        if (server.options.pingInterval > 0 && this.state == ServerConnection.States.OPEN) {
+                        if (server.options.pingInterval > 0 && this.state == ServerConnection.State.CONNECTED) {
                             this.autoPing_();
                         }
                     })
-                    .catch((err) => {
-                        debug(`Auto-ping failed: ${err.toString()}`);
-                    });
-            }, server.options.pingInterval) :
-            () => {};
+                    .catch((err) => {/* Disconnection is handled in ping */});
+            }, server.options.pingInterval);
+        }
+
+        if (server.options.handshakeTimeout > 0) {
+            this.handshakeTimeout_ = setTimeout(() => {
+                if (this.state != ServerConnection.State.AWAITING_HANDSHAKE) {
+                    return debug(`Handshake is not awaiting, ignoring handshake timeout...`);
+                }
+
+                debug(`Handshake timeout exceed, closing the connection...`);
+                this.close(CloseStatus.HANDSHAKE_FAILED.code, `Handshake not completed after ${server.options.handshakeTimeout} ms`);
+            }, server.options.handshakeTimeout);
+        }
     }
 
 
+    /**
+     * Native "message" event handler.
+     *
+     * @param {string|Buffer} data
+     * @param {Object} flags
+     * @param {boolean} flags.binary Specifies if data is binary.
+     * @param {boolean} flags.Boolean Specifies if data was masked.
+     * @ignore
+     */
     onMessage_(data, flags) {
-        const message = Message.parse(data);
         debug(`Native "message" event recieved: ${data}`);
+        let message;
 
-        this.autoPing_();
-
-        // Emit original _message event with raw data
-        this.emit(ServerConnection.Events.MESSAGE, data);
-
-        // Message without response (no id fields)
-        if (!message.id && Message.ReservedNames.indexOf(message.name) == -1) {
-            return this.emit(message.name, message);
+        // A message is recieved, debounce our auto-ping handler if connected
+        if (this.state == ServerConnection.State.CONNECTED) {
+            this.autoPing_();
         }
 
-        // Handshake
-        if (message.name == Message.Names.HANDSHAKE) {
-            return this.onHandshake_(message);
+        try {
+            message = Message.parse(data);
+        } catch (err) {
+            this.emit(ServerConnection.Event.ERROR, new LineError(
+                ServerConnection.ErrorCode.INVALID_JSON,
+                'Could not parse message, invalid json. Check payload for incoming data.',
+                data
+            ));
+            return;
         }
 
-        // Ping
-        if (message.name == Message.Names.PING) {
-            return this.onPing_(message);
+        /**
+         * Route the incoming message
+         */
+        if (message.name == Message.Name.HANDSHAKE) { // Handshake
+            this.onHandshakeMessage_(message);
+        } else if (message.name == Message.Name.PING) { // Ping
+            this.onPingMessage_(message);
+        } else if (message.name == Message.Name.RESPONSE) { // Message response
+            this.onResponseMessage_(message);
+        } else if (Message.ReservedNames.indexOf(message.name) == -1) { // If message name is not reserved
+            if (!message.id) { // Message without response (no id fields)
+                this.onMessageWithoutResponse_(message);
+            } else { // Message arrived awaiting its response
+                this.onMessageWithResponse_(message);
+            }
+        } else {
+            debug(`Could not route the message`, message);
         }
-
-        // Message response
-        if (message.name == Message.Names.RESPONSE && this.deferreds_[message.id]) {
-            return this.onResponse_(message);
-        }
-
-        // Message with response
-        message.once('resolved', payload => {
-            debug(`Message #${message.id} is resolved, sending response...`);
-            this.send_(message.createResponse(null, payload));
-            message.dispose();
-        });
-
-        message.once('rejected', err => {
-            debug(`Message #${message.id} is rejected, sending response...`);
-            if (isObject(err) && err instanceof Error)
-               err = assign({message: err.message, name: err.name}, err);
-            this.send_(message.createResponse(err));
-            message.dispose();
-        });
-
-        this.emit(message.name, message);
     }
 
 
-    onHandshake_(message) {
+    /**
+     * On "handshake" message handler.
+     *
+     * @param {Message} message
+     * @ignore
+     */
+    onHandshakeMessage_(message) {
+        if (this.state == ServerConnection.State.CONNECTED) {
+            debug(`Handshake message recieved but, handshake is already resolved, ignoring...`);
+            return this
+                .sendWithoutResponse_(message.createResponse(new Error('Handshake is already resolved')))
+                .catch(() => { /* Ignoring */ });
+        }
+
         debug(`Handshake message recieved: ${message}`);
 
-        message.once('resolved', payload => {
+        /**
+         * If handshake is resolved
+         */
+        message.once('resolved', (payload) => {
             debug(`Handshake is resolved, sending response...`);
-            this.handshakeResolved_ = true;
+            this.state = ServerConnection.State.CONNECTED;
+            this.handshakeTimeout_ && clearTimeout(this.handshakeTimeout_);
+            this.autoPing_(); // Start auto-pinging
 
             const responsePayload = {
-                handshakePayload: payload,
-                id: this.id,
-                timeout: this.server.options.timeout,
-                maxReconnectDelay: this.server.options.maxReconnectDelay,
-                initialReconnectDelay: this.server.options.initialReconnectDelay,
-                reconnectIncrementFactor: this.server.options.reconnectIncrementFactor,
-                pingInterval: this.server.options.pingInterval
+                payload,
+                id: this.id
             };
 
             this
-                .send_(message.createResponse(null, responsePayload))
+                .sendWithoutResponse_(message.createResponse(null, responsePayload))
                 .then(() => {
-                    debug(`Handshake resolving response is sent, emitting Handshake OK...`);
+                    debug(`Handshake resolving response is sent, emitting connection...`);
                     this.server.rooms.root.add(this);
-                    this.emit(ServerConnection.Events.HANDSHAKE_OK);
+                    this.server.emit('connection', this);
                 })
-                .catch(err => {
-                    debug(`Handshake resolving response could not sent, manually calling "close"...`);
-                    console.log(`Handshake resolve response failed to send for ${this.id}.`);
-                    this.close(4500, err && err.toString());
+                .catch((err) => {
+                    debug(`Could not send handshake response`, err);
+
+                    // TODO: Emit these errors from the server
+                    if (err instanceof LineError) {
+                        switch (err.code) {
+                            case ServerConnection.ErrorCode.DISCONNECTED:
+                                debug(`Connection is gone before handshake completed, ignoring...`);
+                                return;
+
+                            case ServerConnection.ErrorCode.WEBSOCKET_ERROR:
+                                // TODO: Try again!
+                                debug('Native websocket error', err.payload);
+                                return this.close(CloseStatus.HANDSHAKE_FAILED.code, CloseStatus.HANDSHAKE_FAILED.reason);
+
+                            default:
+                                debug('Unhandled line error', err);
+                                return this.close(CloseStatus.HANDSHAKE_FAILED.code, CloseStatus.HANDSHAKE_FAILED.reason);
+                        }
+                    }
+
+                    debug(`Unknown error`, err);
+                    return this.close(CloseStatus.HANDSHAKE_FAILED.code, CloseStatus.HANDSHAKE_FAILED.reason);
                 })
                 .then(() => {
                     message.dispose();
                 });
         });
 
-        message.once('rejected', err => {
+        /**
+         * Id handshake is rejected
+         */
+        message.once('rejected', (err) => {
             debug(`Handshake is rejected, sending response...`);
-            if (isObject(err) && err instanceof Error)
-               err = assign({message: err.message, name: 'Error'}, err);
 
             this
-                .send_(message.createResponse(err))
-                .catch(err_ => {
-                    debug(`Handshake rejecting response could not sent, manually calling "close"...`);
-                    console.log(`Handshake reject response failed to send for ${this.id}.`);
-                })
+                .sendWithoutResponse_(message.createResponse(err))
+                .catch(err => debug(`Handshake rejecting response could not sent, manually calling "close"...`, err))
+                .then(() => this.close(CloseStatus.HANDSHAKE_REJECTED.code, CloseStatus.HANDSHAKE_REJECTED.reason, 50))
                 .then(() => {
-                    this.close(4500, err.message);
                     message.dispose();
                 });
         });
 
-        // Sorry for party rocking
+        /**
+         * Emit handshake event from the server
+         */
         debug(`Emitting server's "handshake" event...`);
-        const handshakeResponse = this.server.emit('handshake', this, message);
+        const handshakeListener = this.server.emit('handshake', this, message);
 
-        if (!handshakeResponse) {
+        if (!handshakeListener) {
             debug(`There is no handshake listener, resolving the handshake by default...`);
             message.resolve();
         }
     }
 
 
-    onResponse_(message) {
+    /**
+     * On "ping" message handler. Reply with pong.
+     *
+     * @param {Message} message
+     * @ignore
+     */
+    onPingMessage_(message) {
+        debug('Ping received, responding with "pong"...');
+
+        this
+            .sendWithoutResponse_(message.createResponse(null, 'pong'))
+            .catch(err => debug('Ping response failed to send back, ignoring for now...', err));
+    }
+
+
+    /**
+     * A message is recieved, and its response is expected.
+     *
+     * @param {Message} message
+     * @ignore
+     */
+    onResponseMessage_(message) {
         const deferred = this.deferreds_[message.id];
+        if (!deferred) return;
 
         if (message.err) {
             debug(`Response (rejecting) recieved: ${message}`);
-            const err = assign(new Error(), message.err);
+            const err = new LineError(
+                ServerConnection.ErrorCode.MESSAGE_REJECTED,
+                'Message is rejected by server, check payload.',
+                message.err
+            );
             deferred.reject(err);
         } else {
             debug(`Response (resolving) recieved: ${message}`);
@@ -188,67 +254,131 @@ class ServerConnection extends EventEmitterExtra {
     }
 
 
-    onPing_(message) {
-        debug(`Ping request recieved, responding with "pong"...`);
-        this
-            .send_(message.createResponse(null, 'pong'))
-            .catch(err => {
-                debug(`Could not send ping response: ${err}`);
-                console.log('Ping responce failed to send', err);
-            });
-    }
-
-
-    onError_(err) {
-        debug(`Native "error" event recieved, emitting line's "error" event: ${err}`);
-        this.emit(ServerConnection.Events.ERROR, err);
-        debug(`And manually calling "close"...`);
-        this.close(4500, err && err.toString());
-    }
-
-
-    close(code, message) {
-        this.socket.close(code, message);
-    }
-
-
-    onClose_(code, message) {
-        debug(`Native "close" event recieved with code ${code}: ${message}`);
-
-        if (this.state == ServerConnection.States.CLOSE) {
-            debug(`Connection's state is already closed, ignoring...`);
-            return;
-        }
-
-        debug(`Removing connection from all rooms, rejecting all waiting messages...`);
-        this.server.rooms.removeFromAll(this);
-        this.server.rooms.root.remove(this);
-
-        forEach(this.deferreds_, (deferred) => {
-            deferred.reject(new Error('Socket connection closed!'));
-        });
-        this.deferreds_ = {};
-
-        debug(`Emitting line's "close" event...`);
-        this.state = ServerConnection.States.CLOSE;
-        this.emit(ServerConnection.Events.CLOSE, code, message);
+    /**
+     * A message is arrived without waiting its response.
+     *
+     * @param {Message} message
+     * @ignore
+     */
+    onMessageWithoutResponse_(message) {
+        debug(`Message without response: name="${message.name}"`);
+        this.emit(message.name, message);
     }
 
 
     /**
-     * Change connection's id, it's random by default. This method is helpful if you already have
+     * A message is arrived and the client is expecting its response.
+     *
+     * @param {Message} message
+     * @ignore
+     */
+    onMessageWithResponse_(message) {
+        debug(`Message with response: name="${message.name}" id="${message.id}"`);
+
+        message.once('resolved', (payload) => {
+            debug(`Message #${message.id} is resolved, sending response...`);
+            this
+                .sendWithoutResponse_(message.createResponse(null, payload))
+                .catch((err) => {
+                    this.emit(ServerConnection.Event.ERROR, new LineError(
+                        ServerConnection.ErrorCode.MESSAGE_NOT_RESPONDED,
+                        `Message (name="${message.name}" id="${message.id}") could not responded (resolve)`,
+                        err
+                    ));
+                })
+                .then(() => message.dispose());
+        });
+
+        message.once('rejected', (err) => {
+            debug(`Message #${message.id} is rejected, sending response...`);
+            this
+                .sendWithoutResponse_(message.createResponse(err))
+                .catch((err) => {
+                    this.emit(ServerConnection.Event.ERROR, new LineError(
+                        ServerConnection.ErrorCode.MESSAGE_NOT_RESPONDED,
+                        `Message (name="${message.name}" id="${message.id}") could not responded (reject)`,
+                        err
+                    ));
+                })
+                .then(() => message.dispose());
+        });
+
+        this.emit(message.name, message);
+    }
+
+
+    /**
+     * Native "error" event.
+     *
+     * @param {Error} err
+     * @ignore
+     */
+    onError_(err) {
+        debug(`Native "error" event recieved, emitting line's "error" event: ${err}`);
+        this.emit(ServerConnection.Event.ERROR, err);
+    }
+
+
+    /**
+     * Native "close" event.
+     *
+     * @param {number} code
+     * @param {string=} reason
+     * @ignore
+     */
+    onClose_(code, reason) {
+        debug(`Native "close" event recieved with code ${code}: ${reason}`);
+        debug(`Removing connection from all rooms, rejecting all waiting messages...`);
+
+        this.handshakeTimeout_ && clearTimeout(this.handshakeTimeout_);
+        this.autoPing_.cancel();
+        this.server.rooms.removeFromAll(this);
+        this.server.rooms.root.remove(this);
+        this.rejectAllDeferreds_(new LineError(ServerConnection.ErrorCode.DISCONNECTED, 'Socket connection closed!'));
+
+        debug(`Emitting line's "close" event...`);
+        this.state = ServerConnection.State.DISCONNECTED;
+        this.emit(ServerConnection.Event.DISCONNECTED, code, reason);
+    }
+
+
+    /**
+     * Changes connection's id, it's random by default. This method is helpful if you already have
      * custom identification for your clients. You must do this before handshake resolved. If
      * handshake is already resolved or there is conflict, this method will throw error.
      *
+     * Throws:
+     * - `ServerConnection.ErrorCode.HANDSHAKE_ENDED`: Id could not be changed after handshake
+     * - `ServerConnection.ErrorCode.ID_CONFLICT`: There is alrady another connection with provided id.
+     *
      * @param {string} newId New connection id
      * @memberOf ServerConnection
+     * @example
+     * server.on(Server.Event.HANDSHAKE, (connection, handshake) => {
+     *   // Assuming client's `options.handshake.payload` is something like `{authToken: '...'}`
+     *
+     *   // Imaginary db
+     *   db.find(handshake.payload.authToken, (record) => {
+     *     if (!record) return handshake.reject(new Error('Invalid auth token'));
+     *     connection.setId(record.id);
+     *     handshake.resolve(record);
+     *   });
+     * });
      */
     setId(newId) {
-        if (this.handshakeResolved_)
-            throw new Error('Handshake already resolved, you cannot change connection id anymore');
+        if (this.state != ServerConnection.State.AWAITING_HANDSHAKE) {
+            throw new LineError(
+                ServerConnection.ErrorCode.HANDSHAKE_ENDED,
+                'Handshake already ended, you cannot change connection id anymore'
+            );
+        }
 
-        if (this.server.getConnectionById(newId))
-            throw new Error(`Conflict! There is already connection with id newId`);
+        if (this.server.getConnectionById(newId)) {
+            throw new LineError(
+                ServerConnection.ErrorCode.ID_CONFLICT,
+                `Conflict! There is already connection with id ${newId}`
+            );
+        }
 
         this.id = newId;
     }
@@ -289,48 +419,67 @@ class ServerConnection extends EventEmitterExtra {
 
 
     /**
-     * Sends a message to client and waits for its response.
+     * Sends a message to client with awaiting its response. This method returns a promise
+     * which resolves the payload parameter will be passed into `message.resolve(...)` in client-side.
      *
-     * @param {string} eventName
+     * If client rejects the message with `message.reject(...)`, this promise will be rejected with
+     * `ServerConnection.ErrorCode.MESSAGE_REJECTED`. You can access the original error object with `err.payload`.
+     *
+     * Rejections:
+     * - `ServerConnection.ErrorCode.INVALID_JSON`: Could not stringify the message payload. Probably circular json.
+     * - `ServerConnection.ErrorCode.MESSAGE_REJECTED`: Message is explicitly rejected by the client.
+     * - `ServerConnection.ErrorCode.MESSAGE_TIMEOUT`: Message response did not arrived, timeout exceeded.
+     * - `ServerConnection.ErrorCode.DISCONNECTED`: Client is not connected (& handshake resolved) or connection is closing
+     * - `ServerConnection.ErrorCode.WEBSOCKET_ERROR`: Native websocket error
+     *
+     * @param {string} name
      * @param {any=} payload
+     * @param {number=} timout
      * @returns {Promise<any>}
      * @memberOf ServerConnection
      * @example
      * connection
      *   .send('hello', {optional: 'payload'})
-     *   .then(responsePayload => {
+     *   .then((data) => {
      *     // Message is resolved by client
      *   })
-     *   .catch(err => {
+     *   .catch((err) => {
      *     // Could not send message
      *     // or
      *     // Client rejected the message!
      *   });
      */
-    send(eventName, payload) {
-        const message = new Message({name: eventName, payload});
-        message.setId();
+    send(name, payload, opt_timeout) { // This method is for external usage!
+        if (this.state != ServerConnection.State.CONNECTED) {
+            return Promise.reject(new LineError(
+                ServerConnection.ErrorCode.DISCONNECTED,
+                `Could not send message, client is not connected.`
+            ));
+        }
 
-        return this
-            .send_(message)
-            .then(_ => {
-                const deferred = this.deferreds_[message.id] = new Deferred({
-                    onExpire: () => {
-                        debug(`Message #${message.id} timeout!`);
-                        delete this.deferreds_[message.id];
-                    },
-                    timeout: this.server.options.timeout
-                });
-
-                return deferred;
-            });
+        try {
+            const message = new Message({name, payload});
+            return this.send_(message, opt_timeout);
+        } catch (err) {
+            // `err` can only be Message.ErrorCode.INVALID_JSON
+            return Promise.reject(new LineError(
+                ServerConnection.ErrorCode.INVALID_JSON,
+                `Could not send message, "payload" stringify error. Probably circular json issue.`
+            ));
+        }
     }
 
 
     /**
-     * Sends a message to client without waiting response.
+     * Sends a message to client without waiting its response. This method returns a promise
+     * that resolves with nothing if the message is successfully sent.
      *
-     * @param {string} eventName
+     * Rejections:
+     * - `ServerConnection.ErrorCode.INVALID_JSON`: Could not stringify the message payload. Probably circular json.
+     * - `ServerConnection.ErrorCode.DISCONNECTED`: Client is not connected (& handshake resolved) or connection is closing
+     * - `ServerConnection.ErrorCode.WEBSOCKET_ERROR`: Native websocket error
+     *
+     * @param {string} name
      * @param {any=} payload
      * @returns {Promise}
      * @memberOf ServerConnection
@@ -340,21 +489,109 @@ class ServerConnection extends EventEmitterExtra {
      *   .then(() => {
      *     // Message sent successfully
      *   })
-     *   .catch(err => {
+     *   .catch((err) => {
      *     // Message could not be sent to client
      *   })
      */
-    sendWithoutResponse(eventName, payload) {
-        const message = new Message({name: eventName, payload});
-        return this.send_(message);
+    sendWithoutResponse(name, payload) { // For external usage
+        if (this.state != ServerConnection.State.CONNECTED) {
+            return Promise.reject(new LineError(
+                ServerConnection.ErrorCode.DISCONNECTED,
+                `Could not send message, client is not connected.`
+            ));
+        }
+
+        try {
+            const message = new Message({name, payload}); // Can throw Message.ErrorCode.INVALID_JSON
+            return this.sendWithoutResponse_(message);
+        } catch (err) {
+            // `err` can only be Message.ErrorCode.INVALID_JSON
+            return Promise.reject(new LineError(
+                ServerConnection.ErrorCode.INVALID_JSON,
+                `Could not send message, "payload" stringify error. Probably circular json issue.`
+            ));
+        }
     }
 
 
-    send_(message) {
+    /**
+     * Base method for sending a message with timeout. Please favor this method internally
+     * instead of using `send` method.
+     *
+     * Rejections:
+     * - `ServerConnection.ErrorCode.MESSAGE_REJECTED`: Message is explicitly rejected by the client.
+     * - `ServerConnection.ErrorCode.MESSAGE_TIMEOUT`: Message response did not arrived, timeout exceeded.
+     * - `ServerConnection.ErrorCode.DISCONNECTED`: Client is not connected (& handshake resolved) or connection is closing
+     * - `ServerConnection.ErrorCode.WEBSOCKET_ERROR`: Native websocket error
+     *
+     * @param {Message} message
+     * @param {number=} opt_timeout
+     * @returns {Promise}
+     * @ignore
+     */
+    send_(message, opt_timeout) {
+        const timeout = isInteger(opt_timeout) && opt_timeout >= 0 ? opt_timeout : this.server.options.responseTimeout;
+        message.setId();
+
+        const deferred = this.deferreds_[message.id] = new Deferred({
+            onExpire: () => {
+                delete this.deferreds_[message.id];
+            },
+            timeout: timeout
+        });
+
+        return this
+            .sendWithoutResponse_(message)
+            .then(() => deferred)
+            .catch((err) => {
+                deferred.dispose();
+
+                // Convert expired -> timeout error
+                if (err instanceof LineError && err.code == Deferred.ErrorCode.EXPIRED) {
+                    throw new LineError(
+                        ServerConnection.ErrorCode.MESSAGE_TIMEOUT,
+                        `Message timeout! Its response did not recived after ${timeout} ms`
+                    );
+                }
+
+                throw err;
+            });
+    }
+
+
+    /**
+     * Base method for sending a message without response. Please favor this method internally
+     * instead of using `sendWithoutResponse` method.
+     *
+     * Rejections:
+     * - `ServerConnection.ErrorCode.DISCONNECTED`: Client is not connected (& handshake resolved) or connection is closing
+     * - `ServerConnection.ErrorCode.WEBSOCKET_ERROR`: Native websocket error
+     *
+     * @param {Message} message
+     * @returns {Promise}
+     * @ignore
+     */
+    sendWithoutResponse_(message) {
+        if (!this.socket || this.socket.readyState != 1) {
+            return Promise.reject(new LineError(
+                ServerConnection.ErrorCode.DISCONNECTED,
+                `Could not send message, there is no open connection.`
+            ));
+        }
+
         return new Promise((resolve, reject) => {
             debug(`Sending message: ${message}`);
-            this.socket.send(message.toString(), err => {
-                if (err) return reject(err);
+            const messageStr = message.toString();
+
+            this.socket.send(messageStr, (err) => {
+                if (err) {
+                    return reject(new LineError(
+                        ServerConnection.ErrorCode.WEBSOCKET_ERROR,
+                        `Could not send message, native websocket error, check payload.`,
+                        err
+                    ));
+                }
+
                 resolve();
             });
         });
@@ -370,11 +607,16 @@ class ServerConnection extends EventEmitterExtra {
     ping() {
         debug(`Pinging...`);
         return this
-            .send(Message.Names.PING)
+            .send_(new Message({name: Message.Name.PING}))
             .catch(err => {
-                debug(`Ping failed: ${err.toString()}`);
-                this.close(410, new Error('Ping failed, dead connection'));
-                throw err;
+                // No matter what error is, start disconnection process
+                debug('Auto-ping failed, manually disconnecting...');
+                this.close(CloseStatus.PING_FAILED.code, CloseStatus.PING_FAILED.reason);
+                throw new LineError(
+                    ServerConnection.ErrorCode.PING_ERROR,
+                    `Ping failed, manually disconnecting...`,
+                    err
+                );
             });
     }
 
@@ -382,16 +624,31 @@ class ServerConnection extends EventEmitterExtra {
     /**
      * Gracefully closes the client connection.
      *
-     * @param {number} code
-     * @param {any} data
+     * @param {number=} code
+     * @param {string=} reason
+     * @param {number=} delay
      * @returns {Promise}
      */
-    close(code, data) {
-        debug(`Closing the connection...`);
-        return new Promise(resolve => {
-            this.socket.close(code, data);
-            resolve();
+    close(code, reason, delay) {
+        debug(`Closing the connection in ${delay || 0} ms...`);
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                this.socket.close(code || 1000, reason);
+                resolve();
+            }, delay || 0);
         });
+    }
+
+
+    /**
+     * Reject all the awaiting deferred with given error.
+     *
+     * @param {Error} err An error object to reject all awaiting deferreds.
+     * @ignore
+     */
+    rejectAllDeferreds_(err) {
+        forEach(this.deferreds_, deferred => deferred.reject(err));
+        this.deferreds_ = {};
     }
 }
 
@@ -401,15 +658,47 @@ class ServerConnection extends EventEmitterExtra {
  * @readonly
  * @enum {string}
  */
-ServerConnection.States = {
+ServerConnection.ErrorCode = {
     /**
-     * `open` Connection is alive and open.
+     * This error can be seen in rejection of `serverConnection.send()` method.
      */
-    OPEN: 'open',
+    MESSAGE_TIMEOUT: 'scMessageTimeout',
     /**
-     * `close` There is no alive connection.
+     * This error can be seen in rejection of `serverConnection.send()` method,
+     * which again indicates that server is explicitly rejected the message.
      */
-    CLOSE: 'close'
+    MESSAGE_REJECTED: 'scMessageRejected',
+    /**
+     * When the response of a message failed to send to client, this error
+     * will be emitted in `ServerConnection.Event.ERROR` event.
+     */
+    MESSAGE_NOT_RESPONDED: 'cMessageNotResponded',
+    /**
+     * Indicates an error while json parsing/stringify.
+     */
+    INVALID_JSON: 'scInvalidJson',
+    /**
+     * This error can be thrown in `serverConnection.setId()`. Connection id
+     * cannot be set after handshake.
+     */
+    HANDSHAKE_ENDED: 'scHandshakeEnded',
+    /**
+     * This error can be seen while using `serverConnection.setId()`. If there is
+     * already connection with that id, this error will be thrown.
+     */
+    ID_CONFLICT: 'scIdConflict',
+    /**
+     * This error indicates client is disconnected.
+     */
+    DISCONNECTED: 'scDisconnected',
+    /**
+     * This error is for native websocket errors.
+     */
+    WEBSOCKET_ERROR: 'scWebsocketError',
+    /**
+     * This error can be seen in rejection of `serverConnection.ping()` method.
+     */
+    PING_ERROR: 'scPingError'
 };
 
 
@@ -418,15 +707,28 @@ ServerConnection.States = {
  * @readonly
  * @enum {string}
  */
-ServerConnection.Events = {
+ServerConnection.State = {
     /**
-     * `_message`
+     * `awaitingHandshake` Connection is open but handshake is not completed yet.
      */
-    MESSAGE: '_message',
+    AWAITING_HANDSHAKE: 'awaitingHandshake',
     /**
-     * @ignore
+     * `connected` Connection is open and handshake resolved.
      */
-    HANDSHAKE_OK: '_handshakeOk', // Private
+    CONNECTED: 'connected',
+    /**
+     * `disconnected` There is no open connection.
+     */
+    DISCONNECTED: 'disconnected'
+};
+
+
+/**
+ * @static
+ * @readonly
+ * @enum {string}
+ */
+ServerConnection.Event = {
     /**
      * `_error`
      */
@@ -434,7 +736,7 @@ ServerConnection.Events = {
     /**
      * `_close`
      */
-    CLOSE: '_close'
+    DISCONNECTED: '_disconnected'
 };
 
 

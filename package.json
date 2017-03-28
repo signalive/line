@@ -1,6 +1,6 @@
 {
   "name": "line-socket",
-  "version": "0.1.10",
+  "version": "1.0.0-beta.1",
   "main": "dist/index.js",
   "scripts": {
     "build": "webpack -p",
@@ -12,8 +12,14 @@
     "postinstall": "./scripts/symlink.sh",
     "test": "mocha test/runner.js"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "websocket",
+    "websockets",
+    "socket",
+    "real-time",
+    "RFC-6455"
+  ],
+  "author": "Signalive Tech <tech@signalive.io>",
   "license": "ISC",
   "repository": {
     "type": "git",
@@ -26,11 +32,12 @@
   "description": "",
   "dependencies": {
     "@types/es6-promise": "0.0.32",
-    "debug": "^2.6.1",
+    "debug": "2.6.3",
     "event-emitter-extra": "0.1.7",
     "lodash": "4.16.6",
-    "node-uuid": "1.4.7",
-    "uws": "0.11.0"
+    "uuid": "3.0.1",
+    "uws": "0.13.0",
+    "ws": "2.2.2"
   },
   "devDependencies": {
     "babel-core": "6.18.2",
@@ -46,6 +53,7 @@
     "mocha": "3.1.2",
     "sinon": "1.17.6",
     "sinon-chai": "2.8.0",
+    "vorpal": "1.11.4",
     "webpack": "v2.1.0-beta.27",
     "webpack-node-externals": "1.5.4"
   }

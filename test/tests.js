@@ -20,7 +20,7 @@ describe('Line Tests', function() {
         return server
             .start()
             .then(_ => {
-                const tasks = clients.map(client => client.connect());
+                const tasks = clients.map(client => client.connectAsync());
                 return Promise.all(tasks);
             })
             .then(_ => {
@@ -30,8 +30,10 @@ describe('Line Tests', function() {
 
 
     afterEach(function() {
-        return server
-            .stop()
+        const tasks = clients.map(client => client.disconnectAsync());
+        return Promise
+            .all(tasks)
+            .then(() => server.stop())
             .then(_ => {
                 server = null;
                 clients = null;
@@ -53,8 +55,8 @@ describe('Line Tests', function() {
         server.on('connection', serverConnectionSpy);
 
         return Promise.all([
-                client1.connect(),
-                client2.connect()
+                client1.connectAsync(),
+                client2.connectAsync()
             ])
             .then(_ => {
                 client1OpenSpy.should.have.been.calledOnce;
@@ -98,7 +100,7 @@ describe('Line Tests', function() {
             .send('test', {hello: 'world'})
             .should.be.rejectedWith(Error)
             .then(err => {
-                err.message.should.equal('Message rejected bro');
+                err.payload.message.should.equal('Message rejected bro');
                 spy.should.have.been.calledOnce;
                 spy.should.have.been.calledWithMatch({payload: {hello: 'world'}});
             });
@@ -127,7 +129,7 @@ describe('Line Tests', function() {
         });
 
         connections[0].on('test', spy);
-        clients[0].serverTimeout_ = 100;
+        clients[0].options.responseTimeout = 100;
 
         return clients[0]
             .send('test', {hello: 'world'})
@@ -174,7 +176,7 @@ describe('Line Tests', function() {
             .send('test', {hello: 'world'})
             .should.be.rejectedWith(Error)
             .then(err => {
-                err.message.should.equal('Hmmmppph, no');
+                err.payload.message.should.equal('Hmmmppph, no');
                 spy.should.have.been.calledOnce;
                 spy.should.have.been.calledWithMatch({payload: {hello: 'world'}});
             });
@@ -203,7 +205,7 @@ describe('Line Tests', function() {
         });
 
         clients[0].on('test', spy);
-        server.options.timeout = 100;
+        server.options.responseTimeout = 100;
 
         return connections[0]
             .send('test', {hello: 'world'})
@@ -288,9 +290,9 @@ describe('Line Tests', function() {
     it('server should accept/reject handshake', function() {
         const server = new Server({port: 3001});
         const clients = [
-            new Client('ws://localhost:3001', {handshakePayload: {id: 1}}),
-            new Client('ws://localhost:3001', {handshakePayload: {id: 2}}),
-            new Client('ws://localhost:3001', {handshakePayload: {id: 3}})
+            new Client('ws://localhost:3001', {handshake: {payload: {id: 1}}}),
+            new Client('ws://localhost:3001', {handshake: {payload: {id: 2}}}),
+            new Client('ws://localhost:3001', {handshake: {payload: {id: 3}}})
         ];
 
         server.on('handshake', (connection, handshake) => {
@@ -302,22 +304,24 @@ describe('Line Tests', function() {
 
         return server
             .start()
-            .then(_ => clients[0].connect())
-            .then(response => {
-                response.should.deep.equal({welcome: 'bro'});
-                return clients[1].connect();
+            .then(() => {
+                return clients[0].connectAsync();
             })
             .then(response => {
                 response.should.deep.equal({welcome: 'bro'});
-                return clients[2].connect();
+                return clients[1].connectAsync();
             })
-            .should.eventually.be.rejectedWith(Error, 'Sorry bro')
+            .then(response => {
+                response.should.deep.equal({welcome: 'bro'});
+                return clients[2].connectAsync();
+            })
+            .should.eventually.be.rejectedWith(Error)
             // TODO: Rejected client should not retry to connect!
-            .then(_ => Promise.all([
-                clients[0].disconnect(),
-                clients[1].disconnect()
+            .then(() => Promise.all([
+                clients[0].disconnectAsync(),
+                clients[1].disconnectAsync()
             ]))
-            .then(_ => server.stop());
+            .then(() => server.stop());
     });
 
 
@@ -329,15 +333,15 @@ describe('Line Tests', function() {
         ];
 
         const spies = [
-            sinon.spy(clients[0], 'onPing_'),
-            sinon.spy(clients[1], 'onPing_')
+            sinon.spy(clients[0], 'onPingMessage_'),
+            sinon.spy(clients[1], 'onPingMessage_')
         ];
 
         return server
             .start()
             .then(_ => Promise.all([
-                clients[0].connect(),
-                clients[1].connect()
+                clients[0].connectAsync(),
+                clients[1].connectAsync()
             ]))
             .then(_ => wait(3500))
             .then(_ => {
@@ -348,26 +352,31 @@ describe('Line Tests', function() {
                 spies[1].restore();
             })
             .then(_ => Promise.all([
-                clients[0].disconnect(),
-                clients[1].disconnect()
+                clients[0].disconnectAsync(),
+                clients[1].disconnectAsync()
             ]))
             .then(_ => server.stop());
     });
 
 
     it('server should close connection if ping is failed', function() {
-        const connectionPingStub = sinon.stub(connections[0], 'send');
-        connectionPingStub.withArgs('_p').returns(Promise.reject(new Error('No ping allowed')));
+        // Seperate our interested client&connections because
+        // in afterEach hook, we're trying to disconnect them!
+        const connection = connections.pop();
+        const client = clients.pop();
+
+        const connectionPingStub = sinon.stub(connection, 'send_');
+        connectionPingStub.withArgs(sinon.match({name: '_p'})).returns(Promise.reject(new Error('No ping allowed')));
         connectionPingStub.returns(Promise.resolve());
 
         const clientCloseSpy = sinon.spy();
-        clients[0].on('_closed', clientCloseSpy);
+        client.on('_disconnected', clientCloseSpy);
 
-        return connections[0]
+        return connection
             .ping()
             .should.be.rejectedWith(Error)
             .then(err => {
-                err.message.should.equal('No ping allowed');
+                err.payload.message.should.equal('No ping allowed');
                 connectionPingStub.restore();
 
                 return wait(50);
@@ -379,18 +388,23 @@ describe('Line Tests', function() {
 
 
     it('client should close connection if ping is failed', function() {
-        const clientPingStub = sinon.stub(clients[0], 'send');
-        clientPingStub.withArgs('_p').returns(Promise.reject(new Error('No ping allowed')));
+        // Seperate our interested client&connections because
+        // in afterEach hook, we're trying to disconnect them!
+        const connection = connections.pop();
+        const client = clients.pop();
+
+        const clientPingStub = sinon.stub(client, 'send_');
+        clientPingStub.withArgs(sinon.match({name: '_p'})).returns(Promise.reject(new Error('No ping allowed')));
         clientPingStub.returns(Promise.resolve());
 
         const connectionCloseSpy = sinon.spy();
-        connections[0].on('_close', connectionCloseSpy);
+        connection.on('_disconnected', connectionCloseSpy);
 
-        return clients[0]
+        return client
             .ping()
             .should.be.rejectedWith(Error)
             .then(err => {
-                err.message.should.equal('No ping allowed');
+                err.payload.message.should.equal('No ping allowed');
                 clientPingStub.restore();
 
                 return wait(50);

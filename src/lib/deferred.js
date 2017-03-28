@@ -1,3 +1,6 @@
+const LineError = require('./error');
+
+
 class Deferred {
     constructor({
         handler = () => {},
@@ -8,6 +11,7 @@ class Deferred {
         this.reject_ = null;
 
         this.timeout_ = null;
+        this.timeoutDuration_ = timeout;
         this.onExpire_ = onExpire;
         this.isFinished_ = false;
 
@@ -50,7 +54,13 @@ class Deferred {
         this.isFinished_ = true;
         this.clearTimeout_();
         this.onExpire_();
-        this.reject_(new Error('Timeout exceed'));
+        this.reject_(new LineError(Deferred.ErrorCode.EXPIRED, `Timeout ${this.timeoutDuration_} ms exceed`));
+    }
+
+
+    dispose() {
+        this.isFinished_ = true;
+        this.clearTimeout_();
     }
 
 
@@ -71,6 +81,11 @@ class Deferred {
         }
     }
 }
+
+
+Deferred.ErrorCode = {
+    EXPIRED: 'dExpired'
+};
 
 
 module.exports = Deferred;
