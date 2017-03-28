@@ -941,34 +941,40 @@ class Client extends EventEmitterExtra {
 
     /**
      * Disposes the client.
+     *
+     * @returns {Promise}
      */
     dispose() {
-        debug('Disposing...');
+        return new Promise((resolve) => {
+            debug('Disposing...');
 
-        switch (this.state) {
-            case Client.State.CONNECTING:
-            case Client.State.HANDSHAKING:
-            case Client.State.CONNECTED:
-                this.once(Client.Event.DISCONNECTED, () => {
+            switch (this.state) {
+                case Client.State.CONNECTING:
+                case Client.State.HANDSHAKING:
+                case Client.State.CONNECTED:
+                    this.once(Client.Event.DISCONNECTED, () => {
+                        this.removeAllListeners();
+                        this.uptimeBuffer_ = [];
+                        if (this.uptimeInterval_) clearInterval(this.uptimeInterval_);
+                        debug('Disposed!');
+                        resolve();
+                    });
+
+                    this.disconnect(CloseStatus.DISPOSED.code, CloseStatus.DISPOSED.reason);
+                    break;
+
+                case Client.State.READY:
+                case Client.State.DISCONNECTING:
+                case Client.State.DISCONNECTED:
+                    this.resetReconnectState_();
                     this.removeAllListeners();
                     this.uptimeBuffer_ = [];
                     if (this.uptimeInterval_) clearInterval(this.uptimeInterval_);
                     debug('Disposed!');
-                });
-
-                this.disconnect(CloseStatus.DISPOSED.code, CloseStatus.DISPOSED.reason);
-                break;
-
-            case Client.State.READY:
-            case Client.State.DISCONNECTING:
-            case Client.State.DISCONNECTED:
-                this.resetReconnectState_();
-                this.removeAllListeners();
-                this.uptimeBuffer_ = [];
-                if (this.uptimeInterval_) clearInterval(this.uptimeInterval_);
-                debug('Disposed!');
-                break;
-        }
+                    resolve();
+                    break;
+            }
+        });
     }
 
 

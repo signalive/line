@@ -95,7 +95,7 @@ declare module 'line-socket/client-node' {
 
         getUptime(): null|number;
 
-        dispose(): void;
+        dispose(): Promise<any>;
     }
 
     export = LineClient;
