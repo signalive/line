@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Messaging & Responses - Documentation</title>
+    <title>client/client-node.js - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -27,16 +27,55 @@
 
 <div id="main">
     
-    <h1 class="page-title">Messaging & Responses</h1>
+    <h1 class="page-title">client/client-node.js</h1>
     
 
+    
+
+
+
+    
     <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>global.WebSocket = require('ws'); // Polyfill for extending browser code
+const Client = require('./client-web');
+const request = require('request');
+const Deferred = require('../lib/deferred');
 
-<article>
-    <p>TODO</p>
-</article>
 
-</section>
+/**
+ * Polyfill http request for node
+ */
+Client.fetchResponseUrl = function(url, timeout = 3000) {
+    return new Deferred({
+        timeout,
+        handler: (deferred) => {
+            request
+                .head(url, {followRedirect: false})
+                .on('response', (response) => {
+                    if (response.statusCode != 301 &amp;&amp; response.statusCode != 302) {
+                        return deferred.reject(new Error(`Not redirected, status code: "${response.statusCode}"`));
+                    }
+
+                    if (!response.headers.location) {
+                        return deferred.reject(new Error(`Redirected, but no location header`));
+                    }
+
+                    deferred.resolve(response.headers.location);
+                })
+                .on('error', err => deferred.reject(err));
+        }
+    });
+};
+
+
+module.exports = Client;
+</code></pre>
+        </article>
+    </section>
+
+
+
 
 </div>
 
