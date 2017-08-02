@@ -45,6 +45,9 @@ const CloseStatus = require('../lib/closestatus');
  * @param {Object=} options.uptimeOptions Uptime options.
  * @param {number=} options.uptimeOptions.interval Uptime checking interval. In milliseconds. Default: `5000` (5 seconds).
  * @param {number=} options.uptimeOptions.window Uptime checking window length. In milliseconds. Default: `300000` (5 minutes)
+ * @param {boolean=} options.followRedirections Attempt to follow 30X redirections. If this options is set, after
+ *      a native websocket connection error, line will try to make a http request to server url. If it is success,
+ *      final response url will be used as server after couple of connection attempts. Default: `false`
  * @property {string} url Server url
  * @property {string} id Unique connection id assigned by the server. It will be accessible after handshake.
  * @property {Client.State} state Connection state
@@ -73,6 +76,7 @@ class Client extends EventEmitterExtra {
             throw new LineError(Client.ErrorCode.INVALID_OPTIONS, 'Options parameter must be an object');
 
         this.url = url.trim();
+        this.urlFollowed = null;
         this.options = defaultsDeep(options, {
             handshake: {
                 timeout: 30000,
@@ -92,7 +96,8 @@ class Client extends EventEmitterExtra {
             uptimeOptions: {
                 interval: 5000,
                 window: 300000
-            }
+            },
+            followRedirections: false
         });
 
 
@@ -153,6 +158,9 @@ class Client extends EventEmitterExtra {
         if (this.options.uptimeOptions.window < this.options.uptimeOptions.interval)
             throw new LineError(Client.ErrorCode.INVALID_OPTIONS, `"options.uptimeOptions.window" must be a greater than interval`);
 
+        if (!isBoolean(this.options.followRedirections))
+            throw new LineError(Client.ErrorCode.INVALID_OPTIONS, `"options.followRedirections" must be a boolean`);
+
         this.ws_ = null;
         this.id = null;
         this.state = Client.State.READY;
@@ -210,11 +218,18 @@ class Client extends EventEmitterExtra {
         switch (this.state) {
             case Client.State.DISCONNECTED:
             case Client.State.READY:
-                debug(`Connecting to "${this.url}" ...`);
+                let url = this.url;
+
+                if (this.options.followRedirections && this.urlFollowed) {
+                    url = this.urlFollowed;
+                    debug(`Following redirection "${this.url}" -> "${this.urlFollowed}"`);
+                }
+
+                debug(`Connecting to "${url}" ...`);
 
                 try {
                     this.reconnectState_.disabled = false;
-                    this.ws_ = new WebSocket(this.url);
+                    this.ws_ = new WebSocket(url);
                     this.bindEvents_();
                     this.state = Client.State.CONNECTING;
                     this.emit(Client.Event.CONNECTING);
@@ -545,6 +560,30 @@ class Client extends EventEmitterExtra {
             `Native websocket error occured, check payload.`,
             err
         ));
+
+        // For 30X redirects, we get this error: "Unexpected response code: 30X"
+        // Attempt to make a http request to server url (this request will follow redirections).
+        // If it is successful, use the final response url as websocket url
+        if (this.options.followRedirections) {
+            debug('Attempting to follow redirections...');
+            const httpUrl = Client.ws2http(this.url);
+
+            if (httpUrl) {
+                debug(`Making a request to "${httpUrl}" for following`);
+                Client
+                    .fetchResponseUrl(httpUrl)
+                    .then((httpUrlFollowed) => {
+                        const wsUrl = Client.http2ws(httpUrlFollowed);
+                        if (!wsUrl) return debug(`Could not convert http url "${httpUrlFollowed}" to ws`);
+                        if (this.urlFollowed == wsUrl) return;
+                        debug(`Updating followed url to "${wsUrl}"`);
+                        this.urlFollowed = wsUrl;
+                    })
+                    .catch(err => debug('Could not follow redirection, ignoring...', err));
+            } else {
+                debug(`Could not convert ws url to http`);
+            }
+        }
     }
 
 
@@ -1001,6 +1040,54 @@ class Client extends EventEmitterExtra {
         this.reconnectState_ = {disabled: false, attempt: 0, timeout: null};
     }
 }
+
+
+Client.ws2http = function(url) {
+    let rv;
+    const mapping = {
+        'ws://': 'http://',
+        'wss://': 'https://'
+    };
+    forEach(mapping, (replace, target) => {
+        if (url.indexOf(target) != 0) return;
+        rv = replace + url.substr(target.length);
+    });
+    return rv;
+};
+
+
+Client.http2ws = function(url) {
+    let rv;
+    const mapping = {
+        'http://': 'ws://',
+        'https://': 'wss://'
+    };
+    forEach(mapping, (replace, target) => {
+        if (url.indexOf(target) != 0) return;
+        rv = replace + url.substr(target.length);
+    });
+    return rv;
+};
+
+
+Client.fetchResponseUrl = function(url, timeout = 3000) {
+    return new Deferred({
+        timeout,
+        handler: (deferred) => {
+            const req = new XMLHttpRequest();
+            req.addEventListener('error', () => deferred.reject(new Error('Native XMLHttpRequest error')));
+            req.addEventListener('abort', () => deferred.reject(new Error('Aborted XMLHttpRequest')));
+            req.addEventListener('load', () => deferred.resolve(req.responseURL));
+            req.open('HEAD', url);
+
+            try {
+                req.send();
+            } catch (err) {
+                deferred.reject(err);
+            }
+        }
+    });
+};
 
 
 // Expose internal classes

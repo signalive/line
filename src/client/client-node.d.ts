@@ -70,7 +70,8 @@ declare module 'line-socket/client-node' {
             uptimeOptions?: {
                 interval?: number,
                 window?: number
-            }
+            },
+            followRedirections: boolean
         });
 
         connect(): boolean;
