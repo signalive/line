@@ -71,7 +71,7 @@ declare module 'line-socket/client-web' {
                 interval?: number,
                 window?: number
             },
-            followRedirections: boolean
+            followRedirections?: boolean
         });
 
         connect(): boolean;
