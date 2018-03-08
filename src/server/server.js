@@ -1,4 +1,3 @@
-const WebSocketServer = require('uws').Server;
 const Connection = require('./connection');
 const Message = require('../lib/message');
 const Rooms = require('./rooms');
@@ -7,6 +6,14 @@ const debug = require('debug')('line:server');
 const LineError = require('../lib/error');
 const assign = require('lodash/assign');
 const isInteger = require('lodash/isInteger');
+
+let WebSocketServer;
+try {
+    WebSocketServer = require('uws').Server;
+} catch (err) {
+    WebSocketServer = require('ws').Server;
+    debug(`Could not find module uws, falling back to ws`, err);
+}
 
 
 /**

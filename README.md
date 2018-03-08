@@ -7,7 +7,11 @@ line
 
 *line* is a lightweight and efficient (web)-socket library that bears non-blocking interface and scalable architecture.  *line* is **fast**, **reliable** and yet it supports **message responses**, **response timeouts** and **client rooms**. *line* internally monitors connection health, and it pro-actively strives to achieve a stable connection.
 
-We built *line* on top of the fastest socket implementation in the Node.JS ecosystem, [uWebSockets](https://github.com/uWebSockets/uWebSockets). In that respect, it consumes order of magnitude **less memory** when compared to socket.io and it's kinds. *line* runs on Node.JS and all modern browsers through an identical API. Therefore, it is a good candidate for cross-platform applications.
+We built *line* on top of the fastest socket implementation in the Node.JS ecosystem, [uWebSockets](https://github.com/uWebSockets/uWebSockets); however we also support javascript based [ws](https://github.com/websockets/ws) as well. When used with uws, line consumes order of magnitude **less memory** compared to socket.io and it's kinds. In order to active uws, you *should install it seperately* like a peer dependecy.
+
+*line* runs on Node.JS and all modern browsers through an identical API. Therefore, it is a good candidate for cross-platform applications.
+
+
 
 Key Features
 ------------
@@ -23,13 +27,14 @@ Key Features
 
 Installation
 --------
-Using yarn
-```
-yarn add line-socket
-```
 Using npm
 ```sh
 npm install line-socket --save
+```
+
+If you wish to use uws
+```sh
+npm install uws --save
 ```
 
 

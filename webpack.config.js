@@ -1,7 +1,6 @@
 const webpack = require('webpack');
 const nodeExternals = require('webpack-node-externals');
 
-
 const nodeExternal = nodeExternals({});
 
 module.exports = [
@@ -14,7 +13,7 @@ module.exports = [
             libraryTarget: 'commonjs2'
         },
         target: 'node',
-        externals: [nodeExternal],
+        externals: [nodeExternal, {uws: 'uws'}],
         module: {
             rules: [
                 {
