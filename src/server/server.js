@@ -6,13 +6,28 @@ const debug = require('debug')('line:server');
 const LineError = require('../lib/error');
 const assign = require('lodash/assign');
 const isInteger = require('lodash/isInteger');
+const http = require('http');
 
 let WebSocketServer;
+let wslib;
 try {
     WebSocketServer = require('uws').Server;
+    wslib = 'uws';
 } catch (err) {
-    WebSocketServer = require('ws').Server;
-    debug(`Could not find module uws, falling back to ws`, err);
+    try {
+        debug(`Could not find module uws, falling back to ws`, err);
+        WebSocketServer = require('ws').Server;
+        wslib = 'ws';
+    } catch (err) {
+        try {
+            debug(`Could not find module ws, falling back to websocket`, err);
+            WebSocketServer = require('websocket').server;
+            wslib = 'websocket';
+        } catch (err) {
+            debug(`Could not find any websocket module, aborting launch`, err);
+            throw new Error('No websocket module');
+        }
+    }
 }
 
 
@@ -103,19 +118,35 @@ class Server extends EventEmitterExtra {
         return new Promise((resolve, reject) => {
             debug(`Starting with port "${this.options.port}" ...`);
 
-            this.server = new WebSocketServer(this.options, err => {
-                if (err) {
-                    debug(`Could not start: ${err}`);
-                    return reject(new LineError(
-                        Server.ErrorCode.WEBSOCKET_ERROR,
-                        `Could not start the server, websocket error, check payload`,
-                        err
-                    ));
-                }
+            this.httpServer = http.createServer();
+            this.server = new WebSocketServer({httpServer: this.httpServer});
+            this.bindEvents_();
 
-                this.bindEvents_();
-                resolve();
+            this.httpServer.listen(this.options.port, err => {
+                if (err) {
+                    reject(err);
+                    console.log('server cannot start', err);
+                }
+                else {
+                    resolve();
+                    console.log('OK');
+                }
             });
+
+
+            // this.server = new WebSocketServer(this.options, err => {
+            //     if (err) {
+            //         debug(`Could not start: ${err}`);
+            //         return reject(new LineError(
+            //             Server.ErrorCode.WEBSOCKET_ERROR,
+            //             `Could not start the server, websocket error, check payload`,
+            //             err
+            //         ));
+            //     }
+
+            //     this.bindEvents_();
+            //     resolve();
+            // });
         })
     }
 
@@ -146,9 +177,9 @@ class Server extends EventEmitterExtra {
 
         return new Promise(resolve => {
             debug(`Closing and disposing the server...`);
-            this.server.close();
+            this.server.shutDown();
             this.server = null;
-            resolve();
+            this.httpServer.close(() => resolve());
         });
     }
 
@@ -161,9 +192,16 @@ class Server extends EventEmitterExtra {
     bindEvents_() {
         debug(`Binding server events...`);
 
+        this.server.on('request', this.onRequest_.bind(this));
+        this.server.on('connect', this.onConnection_.bind(this));
         this.server.on('connection', this.onConnection_.bind(this));
         this.server.on('headers', this.onHeaders_.bind(this));
         this.server.on('error', this.onError_.bind(this));
+    }
+
+    onRequest_(request) {
+        console.log('request');
+        const connection = request.accept(null, request.origin);
     }
 
 
@@ -174,6 +212,8 @@ class Server extends EventEmitterExtra {
      * @ignore
      */
     onConnection_(socket) {
+        console.log('connection');
+
         debug(`Native "connection" event recieved, creating line connection...`);
         const connection = new Connection(socket, this);
     }
