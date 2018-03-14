@@ -13,7 +13,7 @@ module.exports = [
             libraryTarget: 'commonjs2'
         },
         target: 'node',
-        externals: [nodeExternal, {uws: 'uws'}],
+        externals: [nodeExternal, {uws: 'uws', websocket: 'websocket'}],
         module: {
             rules: [
                 {

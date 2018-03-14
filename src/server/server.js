@@ -7,6 +7,7 @@ const LineError = require('../lib/error');
 const assign = require('lodash/assign');
 const isInteger = require('lodash/isInteger');
 const http = require('http');
+const https = require('https');
 
 let WebSocketServer;
 let wslib;
@@ -15,20 +16,17 @@ try {
     wslib = 'uws';
 } catch (err) {
     try {
-        debug(`Could not find module uws, falling back to ws`, err);
+        debug(`Could not find module uws lib, falling back to websocket lib`, err);
+        WebSocketServer = require('websocket').server;
+        wslib = 'websocket';
+    } catch (err) {
+        debug(`Could not find module websocket lib, falling back to ws lib`, err);
         WebSocketServer = require('ws').Server;
         wslib = 'ws';
-    } catch (err) {
-        try {
-            debug(`Could not find module ws, falling back to websocket`, err);
-            WebSocketServer = require('websocket').server;
-            wslib = 'websocket';
-        } catch (err) {
-            debug(`Could not find any websocket module, aborting launch`, err);
-            throw new Error('No websocket module');
-        }
     }
 }
+
+console.log('Continuing with', wslib);
 
 
 /**
@@ -55,6 +53,8 @@ try {
 class Server extends EventEmitterExtra {
     constructor(options = {}) {
         super();
+
+        this.wslib = wslib;
 
         this.options = assign({
             responseTimeout: 10000,
@@ -99,55 +99,67 @@ class Server extends EventEmitterExtra {
             ));
         }
 
-        if (!this.options.port) {
-            debug(`Starting without port...`);
+        // if (!this.options.port) {
+        //     debug(`Starting without port...`);
 
-            try {
-                this.server = new WebSocketServer(this.options);
-                this.bindEvents_();
-                return Promise.resolve();
-            } catch (err) {
-                return Promise.reject(new LineError(
-                    Server.ErrorCode.WEBSOCKET_ERROR,
-                    `Could not start the server, websocket error, check payload`,
-                    err
-                ));
-            }
-        }
+        //     try {
+        //         this.server = new WebSocketServer(this.options);
+        //         this.bindEvents_();
+        //         return Promise.resolve();
+        //     } catch (err) {
+        //         return Promise.reject(new LineError(
+        //             Server.ErrorCode.WEBSOCKET_ERROR,
+        //             `Could not start the server, websocket error, check payload`,
+        //             err
+        //         ));
+        //     }
+        // }
 
-        return new Promise((resolve, reject) => {
-            debug(`Starting with port "${this.options.port}" ...`);
 
-            this.httpServer = http.createServer();
+        debug(`Starting with port "${this.options.port}" ...`);
+
+
+        if (this.wslib == 'websocket') {
+            if (this.options.secure)
+                this.httpServer = https.createServer();
+            else
+                this.httpServer = http.createServer();
+
             this.server = new WebSocketServer({httpServer: this.httpServer});
             this.bindEvents_();
 
-            this.httpServer.listen(this.options.port, err => {
-                if (err) {
-                    reject(err);
-                    console.log('server cannot start', err);
-                }
-                else {
+            return new Promise((resolve, reject) => {
+                this.httpServer.listen(this.options.port, err => {
+                    if (err) {
+                        debug(`Could not start: ${err}`);
+                        return reject(new LineError(
+                            Server.ErrorCode.WEBSOCKET_ERROR,
+                            `Could not start the server, websocket error, check payload`,
+                            err
+                        ));
+                    }
+
                     resolve();
-                    console.log('OK');
-                }
+                });
             });
+        } else {
+            return new Promise((resolve, reject) => {
+                this.server = new WebSocketServer(this.options, err => {
+                    if (err) {
+                        debug(`Could not start: ${err}`);
+                        return reject(new LineError(
+                            Server.ErrorCode.WEBSOCKET_ERROR,
+                            `Could not start the server, websocket error, check payload`,
+                            err
+                        ));
+                    }
 
+                    resolve();
+                });
 
-            // this.server = new WebSocketServer(this.options, err => {
-            //     if (err) {
-            //         debug(`Could not start: ${err}`);
-            //         return reject(new LineError(
-            //             Server.ErrorCode.WEBSOCKET_ERROR,
-            //             `Could not start the server, websocket error, check payload`,
-            //             err
-            //         ));
-            //     }
-
-            //     this.bindEvents_();
-            //     resolve();
-            // });
-        })
+                this.bindEvents_();
+            });
+        }
     }
 
 
@@ -177,9 +189,17 @@ class Server extends EventEmitterExtra {
 
         return new Promise(resolve => {
             debug(`Closing and disposing the server...`);
-            this.server.shutDown();
-            this.server = null;
-            this.httpServer.close(() => resolve());
+            if (this.wslib == 'websocket') {
+                this.server.shutDown();
+                this.httpServer.close(() => {
+                    this.server = null;
+                    resolve();
+                });
+            } else {
+                this.server.close();
+                this.server = null;
+                resolve();
+            }
         });
     }
 
@@ -192,15 +212,18 @@ class Server extends EventEmitterExtra {
     bindEvents_() {
         debug(`Binding server events...`);
 
-        this.server.on('request', this.onRequest_.bind(this));
-        this.server.on('connect', this.onConnection_.bind(this));
-        this.server.on('connection', this.onConnection_.bind(this));
-        this.server.on('headers', this.onHeaders_.bind(this));
+        if (this.wslib == 'websocket') {
+            this.server.on('request', this.onRequest_.bind(this));
+            this.server.on('connect', this.onConnection_.bind(this));
+        } else {
+            this.server.on('connection', this.onConnection_.bind(this));
+            this.server.on('headers', this.onHeaders_.bind(this));
+        }
+
         this.server.on('error', this.onError_.bind(this));
     }
 
     onRequest_(request) {
-        console.log('request');
         const connection = request.accept(null, request.origin);
     }
 
@@ -212,8 +235,6 @@ class Server extends EventEmitterExtra {
      * @ignore
      */
     onConnection_(socket) {
-        console.log('connection');
-
         debug(`Native "connection" event recieved, creating line connection...`);
         const connection = new Connection(socket, this);
     }

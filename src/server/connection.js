@@ -77,11 +77,12 @@ class ServerConnection extends EventEmitterExtra {
      * @param {boolean} flags.Boolean Specifies if data was masked.
      * @ignore
      */
-    onMessage_(hebe, flags) {
+    onMessage_(data, flags) {
         debug(`Native "message" event recieved: ${data}`);
         let message;
 
-        const data = hebe.utf8Data;
+        if (this.server.wslib == 'websocket')
+            data = data.utf8Data;
 
         // A message is recieved, debounce our auto-ping handler if connected
         if (this.state == ServerConnection.State.CONNECTED) {
@@ -574,8 +575,9 @@ class ServerConnection extends EventEmitterExtra {
      * @ignore
      */
     sendWithoutResponse_(message) {
-        // if (!this.socket || this.socket.readyState != 1) {
-        if (!this.socket || !this.socket.connected) {
+        if  (!this.socket ||
+            (this.server.wslib == 'websocket' && !this.socket.connected) ||
+            ((this.server.wslib == 'ws' || this.server.wslib == 'uws') && this.socket.readyState != 1)) {
             return Promise.reject(new LineError(
                 ServerConnection.ErrorCode.DISCONNECTED,
                 `Could not send message, there is no open connection.`
