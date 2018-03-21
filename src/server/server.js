@@ -99,25 +99,7 @@ class Server extends EventEmitterExtra {
             ));
         }
 
-        // if (!this.options.port) {
-        //     debug(`Starting without port...`);
-
-        //     try {
-        //         this.server = new WebSocketServer(this.options);
-        //         this.bindEvents_();
-        //         return Promise.resolve();
-        //     } catch (err) {
-        //         return Promise.reject(new LineError(
-        //             Server.ErrorCode.WEBSOCKET_ERROR,
-        //             `Could not start the server, websocket error, check payload`,
-        //             err
-        //         ));
-        //     }
-        // }
-
-
         debug(`Starting with port "${this.options.port}" ...`);
-
 
         if (this.wslib == 'websocket') {
             if (this.options.secure)
