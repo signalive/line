@@ -33,7 +33,7 @@
   "dependencies": {
     "@types/es6-promise": "0.0.32",
     "debug": "2.6.3",
-    "event-emitter-extra": "0.1.7",
+    "event-emitter-extra": "0.1.8",
     "lodash": "4.16.6",
     "request": "2.81.0",
     "uuid": "3.0.1",
