@@ -1,0 +1,10 @@
+demo
+docs
+docs_src
+node_modules
+test
+.babelrc
+.gitignore
+.jsdoc.json
+.travis.yml
+webpack.config.js
