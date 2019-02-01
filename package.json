@@ -9,7 +9,7 @@
     "build:watch": "webpack -p -w",
     "coverage": "istanbul cover ./node_modules/.bin/_mocha -- test/runner-coverage.js -R spec",
     "coverage:coveralls": "istanbul cover ./node_modules/mocha/bin/_mocha --report lcovonly -- test/runner-coverage.js -R spec && cat ./coverage/lcov.info | coveralls",
-    "postinstall": "./scripts/symlink.sh",
+    "postinstall": "node ./scripts/symlink.js",
     "test": "mocha test/runner.js"
   },
   "keywords": [
