@@ -32,7 +32,8 @@ function handleFile(filePath) {
     }
 
     if (isWindows) {
-        fs.copyFileSync(from, to);
+        // fs.copyFileSync(from, to); // fs.copyFileSync is only available >= v8.5.0
+        fs.writeFileSync(to, fs.readFileSync(from));
     } else {
         fs.symlinkSync(from, to);
     }
