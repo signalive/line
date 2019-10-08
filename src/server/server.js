@@ -10,6 +10,9 @@ const isInteger = require('lodash/isInteger');
 let WebSocketServer;
 try {
     WebSocketServer = require('uws').Server;
+
+    if (!WebSocketServer)
+        throw new Error('uws not found, falling back to ws');
 } catch (err) {
     WebSocketServer = require('ws').Server;
     debug(`Could not find module uws, falling back to ws`, err);
