@@ -34,7 +34,7 @@
     "@types/es6-promise": "0.0.32",
     "debug": "2.6.3",
     "event-emitter-extra": "0.1.8",
-    "lodash": "4.16.6",
+    "lodash": "4.17.13",
     "request": "2.81.0",
     "uuid": "3.0.1",
     "ws": "2.2.2"
