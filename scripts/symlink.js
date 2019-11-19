@@ -35,7 +35,7 @@ function handleFile(filePath) {
         // fs.copyFileSync(from, to); // fs.copyFileSync is only available >= v8.5.0
         fs.writeFileSync(to, fs.readFileSync(from));
     } else {
-        fs.symlinkSync(from, to);
+        fs.symlinkSync(filePath, filename);
     }
 }
 
