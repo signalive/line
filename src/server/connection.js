@@ -27,7 +27,7 @@ class ServerConnection extends EventEmitterExtra {
         super();
 
         this.id = uuid.v4();
-        debug(`Creating connection with id ${this.id} ...`);
+        debug(`[${this.id}] Creating connection with id ${this.id} ...`);
 
         this.socket = socket;
         this.server = server;
@@ -45,7 +45,7 @@ class ServerConnection extends EventEmitterExtra {
                 this
                     .ping()
                     .then(() => {
-                        debug(`Auto-ping successful`);
+                        debug(`[${this.id}] Auto-ping successful`);
 
                         if (server.options.pingInterval > 0 && this.state == ServerConnection.State.CONNECTED) {
                             this.autoPing_();
@@ -58,10 +58,10 @@ class ServerConnection extends EventEmitterExtra {
         if (server.options.handshakeTimeout > 0) {
             this.handshakeTimeout_ = setTimeout(() => {
                 if (this.state != ServerConnection.State.AWAITING_HANDSHAKE) {
-                    return debug(`Handshake is not awaiting, ignoring handshake timeout...`);
+                    return debug(`[${this.id}] Handshake is not awaiting, ignoring handshake timeout...`);
                 }
 
-                debug(`Handshake timeout exceed, closing the connection...`);
+                debug(`[${this.id}] Handshake timeout exceed, closing the connection...`);
                 this.close(CloseStatus.HANDSHAKE_FAILED.code, `Handshake not completed after ${server.options.handshakeTimeout} ms`);
             }, server.options.handshakeTimeout);
         }
@@ -78,7 +78,7 @@ class ServerConnection extends EventEmitterExtra {
      * @ignore
      */
     onMessage_(data, flags) {
-        debug(`Native "message" event recieved: ${data}`);
+        debug(`[${this.id}] Native "message" event recieved: ${data}`);
         let message;
 
         // A message is recieved, debounce our auto-ping handler if connected
@@ -113,7 +113,7 @@ class ServerConnection extends EventEmitterExtra {
                 this.onMessageWithResponse_(message);
             }
         } else {
-            debug(`Could not route the message`, message);
+            debug(`[${this.id}] Could not route the message`, message);
         }
     }
 
@@ -126,19 +126,19 @@ class ServerConnection extends EventEmitterExtra {
      */
     onHandshakeMessage_(message) {
         if (this.state == ServerConnection.State.CONNECTED) {
-            debug(`Handshake message recieved but, handshake is already resolved, ignoring...`);
+            debug(`[${this.id}] Handshake message recieved but, handshake is already resolved, ignoring...`);
             return this
                 .sendWithoutResponse_(message.createResponse(new Error('Handshake is already resolved')))
                 .catch(() => { /* Ignoring */ });
         }
 
-        debug(`Handshake message recieved: ${message}`);
+        debug(`[${this.id}] Handshake message recieved: ${message}`);
 
         /**
          * If handshake is resolved
          */
         message.once('resolved', (payload) => {
-            debug(`Handshake is resolved, sending response...`);
+            debug(`[${this.id}] Handshake is resolved, sending response...`);
             this.state = ServerConnection.State.CONNECTED;
             this.handshakeTimeout_ && clearTimeout(this.handshakeTimeout_);
             this.autoPing_(); // Start auto-pinging
@@ -151,32 +151,32 @@ class ServerConnection extends EventEmitterExtra {
             this
                 .sendWithoutResponse_(message.createResponse(null, responsePayload))
                 .then(() => {
-                    debug(`Handshake resolving response is sent, emitting connection...`);
+                    debug(`[${this.id}] Handshake resolving response is sent, emitting connection...`);
                     this.server.rooms.root.add(this);
                     this.server.emit('connection', this);
                 })
                 .catch((err) => {
-                    debug(`Could not send handshake response`, err);
+                    debug(`[${this.id}] Could not send handshake response`, err);
 
                     // TODO: Emit these errors from the server
                     if (err instanceof LineError) {
                         switch (err.code) {
                             case ServerConnection.ErrorCode.DISCONNECTED:
-                                debug(`Connection is gone before handshake completed, ignoring...`);
+                                debug(`[${this.id}] Connection is gone before handshake completed, ignoring...`);
                                 return;
 
                             case ServerConnection.ErrorCode.WEBSOCKET_ERROR:
                                 // TODO: Try again!
-                                debug('Native websocket error', err.payload);
+                                debug('[${this.id}] Native websocket error', err.payload);
                                 return this.close(CloseStatus.HANDSHAKE_FAILED.code, CloseStatus.HANDSHAKE_FAILED.reason);
 
                             default:
-                                debug('Unhandled line error', err);
+                                debug('[${this.id}] Unhandled line error', err);
                                 return this.close(CloseStatus.HANDSHAKE_FAILED.code, CloseStatus.HANDSHAKE_FAILED.reason);
                         }
                     }
 
-                    debug(`Unknown error`, err);
+                    debug(`[${this.id}] Unknown error`, err);
                     return this.close(CloseStatus.HANDSHAKE_FAILED.code, CloseStatus.HANDSHAKE_FAILED.reason);
                 })
                 .then(() => {
@@ -188,11 +188,11 @@ class ServerConnection extends EventEmitterExtra {
          * Id handshake is rejected
          */
         message.once('rejected', (err) => {
-            debug(`Handshake is rejected, sending response...`);
+            debug(`[${this.id}] Handshake is rejected, sending response...`);
 
             this
                 .sendWithoutResponse_(message.createResponse(err))
-                .catch(err => debug(`Handshake rejecting response could not sent, manually calling "close"...`, err))
+                .catch(err => debug(`[${this.id}] Handshake rejecting response could not sent, manually calling "close"...`, err))
                 .then(() => this.close(CloseStatus.HANDSHAKE_REJECTED.code, CloseStatus.HANDSHAKE_REJECTED.reason, 50))
                 .then(() => {
                     message.dispose();
@@ -202,11 +202,11 @@ class ServerConnection extends EventEmitterExtra {
         /**
          * Emit handshake event from the server
          */
-        debug(`Emitting server's "handshake" event...`);
+        debug(`[${this.id}] Emitting server's "handshake" event...`);
         const handshakeListener = this.server.emit('handshake', this, message);
 
         if (!handshakeListener) {
-            debug(`There is no handshake listener, resolving the handshake by default...`);
+            debug(`[${this.id}] There is no handshake listener, resolving the handshake by default...`);
             message.resolve();
         }
     }
@@ -219,11 +219,11 @@ class ServerConnection extends EventEmitterExtra {
      * @ignore
      */
     onPingMessage_(message) {
-        debug('Ping received, responding with "pong"...');
+        debug('[${this.id}] Ping received, responding with "pong"...');
 
         this
             .sendWithoutResponse_(message.createResponse(null, 'pong'))
-            .catch(err => debug('Ping response failed to send back, ignoring for now...', err));
+            .catch(err => debug('[${this.id}] Ping response failed to send back, ignoring for now...', err));
     }
 
 
@@ -238,7 +238,7 @@ class ServerConnection extends EventEmitterExtra {
         if (!deferred) return;
 
         if (message.err) {
-            debug(`Response (rejecting) recieved: ${message}`);
+            debug(`[${this.id}] Response (rejecting) recieved: ${message}`);
             const err = new LineError(
                 ServerConnection.ErrorCode.MESSAGE_REJECTED,
                 'Message is rejected by server, check payload.',
@@ -246,7 +246,7 @@ class ServerConnection extends EventEmitterExtra {
             );
             deferred.reject(err);
         } else {
-            debug(`Response (resolving) recieved: ${message}`);
+            debug(`[${this.id}] Response (resolving) recieved: ${message}`);
             deferred.resolve(message.payload);
         }
 
@@ -261,7 +261,7 @@ class ServerConnection extends EventEmitterExtra {
      * @ignore
      */
     onMessageWithoutResponse_(message) {
-        debug(`Message without response: name="${message.name}"`);
+        debug(`[${this.id}] Message without response: name="${message.name}"`);
         this.emit(message.name, message);
     }
 
@@ -273,10 +273,10 @@ class ServerConnection extends EventEmitterExtra {
      * @ignore
      */
     onMessageWithResponse_(message) {
-        debug(`Message with response: name="${message.name}" id="${message.id}"`);
+        debug(`[${this.id}] Message with response: name="${message.name}" id="${message.id}"`);
 
         message.once('resolved', (payload) => {
-            debug(`Message #${message.id} is resolved, sending response...`);
+            debug(`[${this.id}] Message #${message.id} is resolved, sending response...`);
             this
                 .sendWithoutResponse_(message.createResponse(null, payload))
                 .catch((err) => {
@@ -290,7 +290,7 @@ class ServerConnection extends EventEmitterExtra {
         });
 
         message.once('rejected', (err) => {
-            debug(`Message #${message.id} is rejected, sending response...`);
+            debug(`[${this.id}] Message #${message.id} is rejected, sending response...`);
             this
                 .sendWithoutResponse_(message.createResponse(err))
                 .catch((err) => {
@@ -314,7 +314,7 @@ class ServerConnection extends EventEmitterExtra {
      * @ignore
      */
     onError_(err) {
-        debug(`Native "error" event recieved, emitting line's "error" event: ${err}`);
+        debug(`[${this.id}] Native "error" event recieved, emitting line's "error" event: ${err}`);
         this.emit(ServerConnection.Event.ERROR, err);
     }
 
@@ -327,8 +327,8 @@ class ServerConnection extends EventEmitterExtra {
      * @ignore
      */
     onClose_(code, reason) {
-        debug(`Native "close" event recieved with code ${code}: ${reason}`);
-        debug(`Removing connection from all rooms, rejecting all waiting messages...`);
+        debug(`[${this.id}] Native "close" event recieved with code ${code}: ${reason}`);
+        debug(`[${this.id}] Removing connection from all rooms, rejecting all waiting messages...`);
 
         this.handshakeTimeout_ && clearTimeout(this.handshakeTimeout_);
         this.autoPing_.cancel();
@@ -336,7 +336,7 @@ class ServerConnection extends EventEmitterExtra {
         this.server.rooms.root.remove(this);
         this.rejectAllDeferreds_(new LineError(ServerConnection.ErrorCode.DISCONNECTED, 'Socket connection closed!'));
 
-        debug(`Emitting line's "close" event...`);
+        debug(`[${this.id}] Emitting line's "close" event...`);
         this.state = ServerConnection.State.DISCONNECTED;
         this.emit(ServerConnection.Event.DISCONNECTED, code, reason);
     }
@@ -580,7 +580,7 @@ class ServerConnection extends EventEmitterExtra {
         }
 
         return new Promise((resolve, reject) => {
-            debug(`Sending message: ${message}`);
+            debug(`[${this.id}] Sending message: ${message}`);
             const messageStr = message.toString();
 
             this.socket.send(messageStr, (err) => {
@@ -605,12 +605,12 @@ class ServerConnection extends EventEmitterExtra {
      * @memberOf ServerConnection
      */
     ping() {
-        debug(`Pinging...`);
+        debug(`[${this.id}] Pinging...`);
         return this
             .send_(new Message({name: Message.Name.PING}))
             .catch(err => {
                 // No matter what error is, start disconnection process
-                debug('Auto-ping failed, manually disconnecting...');
+                debug('[${this.id}] Auto-ping failed, manually disconnecting...');
                 this.close(CloseStatus.PING_FAILED.code, CloseStatus.PING_FAILED.reason);
                 throw new LineError(
                     ServerConnection.ErrorCode.PING_ERROR,
@@ -630,7 +630,7 @@ class ServerConnection extends EventEmitterExtra {
      * @returns {Promise}
      */
     close(code, reason, delay) {
-        debug(`Closing the connection in ${delay || 0} ms...`);
+        debug(`[${this.id}] Closing the connection in ${delay || 0} ms...`);
         return new Promise((resolve) => {
             setTimeout(() => {
                 this.socket.close(code || 1000, reason);
