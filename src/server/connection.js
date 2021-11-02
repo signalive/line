@@ -634,6 +634,12 @@ class ServerConnection extends EventEmitterExtra {
         return new Promise((resolve) => {
             setTimeout(() => {
                 this.socket.close(code || 1000, reason);
+
+                setTimeout(() => {
+                    if (this.socket.readyState != 3) {
+                        debug(`[${this.id}] Ready state for this connection is not CLOSED. It is = ${this.socket.readyState} ${['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'][this.socket.readyState]}`);
+                    }
+                }, 10 * 1000);
                 resolve();
             }, delay || 0);
         });
