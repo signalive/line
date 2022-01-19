@@ -49,9 +49,14 @@ class ServerConnection extends EventEmitterExtra {
 
                         if (server.options.pingInterval > 0 && this.state == ServerConnection.State.CONNECTED) {
                             this.autoPing_();
+                        } else {
+                            debug(`Canceling auto-ping, state: ${this.state}`);
                         }
                     })
-                    .catch((err) => {/* Disconnection is handled in ping */});
+                    .catch((err) => {
+                        /* Disconnection is handled in ping */
+                        debug(`Auto-ping failed, state: ${this.state}`, err);
+                    });
             }, server.options.pingInterval);
         }
 
@@ -167,11 +172,11 @@ class ServerConnection extends EventEmitterExtra {
 
                             case ServerConnection.ErrorCode.WEBSOCKET_ERROR:
                                 // TODO: Try again!
-                                debug('[${this.id}] Native websocket error', err.payload);
+                                debug(`[${this.id}] Native websocket error`, err.payload);
                                 return this.close(CloseStatus.HANDSHAKE_FAILED.code, CloseStatus.HANDSHAKE_FAILED.reason);
 
                             default:
-                                debug('[${this.id}] Unhandled line error', err);
+                                debug(`[${this.id}] Unhandled line error`, err);
                                 return this.close(CloseStatus.HANDSHAKE_FAILED.code, CloseStatus.HANDSHAKE_FAILED.reason);
                         }
                     }
@@ -219,11 +224,11 @@ class ServerConnection extends EventEmitterExtra {
      * @ignore
      */
     onPingMessage_(message) {
-        debug('[${this.id}] Ping received, responding with "pong"...');
+        debug(`[${this.id}] Ping received, responding with "pong"...`);
 
         this
             .sendWithoutResponse_(message.createResponse(null, 'pong'))
-            .catch(err => debug('[${this.id}] Ping response failed to send back, ignoring for now...', err));
+            .catch(err => debug(`[${this.id}] Ping response failed to send back, ignoring for now...`, err));
     }
 
 
@@ -610,7 +615,7 @@ class ServerConnection extends EventEmitterExtra {
             .send_(new Message({name: Message.Name.PING}))
             .catch(err => {
                 // No matter what error is, start disconnection process
-                debug('[${this.id}] Auto-ping failed, manually disconnecting...');
+                debug(`[${this.id}] Auto-ping failed, manually disconnecting...`, err);
                 this.close(CloseStatus.PING_FAILED.code, CloseStatus.PING_FAILED.reason);
                 throw new LineError(
                     ServerConnection.ErrorCode.PING_ERROR,
@@ -630,16 +635,22 @@ class ServerConnection extends EventEmitterExtra {
      * @returns {Promise}
      */
     close(code, reason, delay) {
-        debug(`[${this.id}] Closing the connection in ${delay || 0} ms...`);
+        debug(`[${this.id}] Closing the connection in ${delay || 0} ms with code: ${code}.`);
         return new Promise((resolve) => {
             setTimeout(() => {
                 this.socket.close(code || 1000, reason);
 
                 setTimeout(() => {
-                    if (this.socket.readyState != 3) {
-                        debug(`[${this.id}] Ready state for this connection is not CLOSED. It is = ${this.socket.readyState} ${['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'][this.socket.readyState]}`);
+                    const persistsInRoot = !!this.server.rooms.root.getConnectionById(this.id);
+                    const belongingRooms = this.getRooms().length;
+
+                    if (persistsInRoot || belongingRooms !== 0 || this.socket.readyState != 3) {
+                        debug(`[${this.id}] Could not dispose this connection somehow. ` +
+                                    `ReadyState = ${['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'][this.socket.readyState]} | ` +
+                                    `Persists in root room: ${persistsInRoot} | ` +
+                                    `Belongs to this many rooms: ${belongingRooms}`);
                     }
-                }, 10 * 1000);
+                }, 15 * 1000);
                 resolve();
             }, delay || 0);
         });
