@@ -40,12 +40,40 @@ class ServerConnection extends EventEmitterExtra {
         this.socket.on('error', this.onError_.bind(this));
         this.socket.on('close', this.onClose_.bind(this));
 
+        this.idleTimeout = new Deferred();
+        this.idleTimeoutDuration = server.options.pingInterval * 100;
+
         if (server.options.pingInterval > 0) {
+            /**
+             * Handle the weird rare state of connection where despite a successful closure residuals still remain in rooms.
+             */
+            this.idleTimeout = new Deferred({timeout:  this.idleTimeoutDuration, rejectOnExpire: false,
+                onExpire: () => {
+                    const persistsInRoot = !!this.server.rooms.root.getConnectionById(this.id);
+                    const belongingRooms = this.getRooms().length;
+
+                    if (persistsInRoot || belongingRooms !== 0) {
+                        debug(`[${this.id}] Could not dispose this connection somehow. ` +
+                              `ReadyState = ${['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'][this.socket.readyState]} | ` +
+                              `Persists in root room: ${persistsInRoot} | ` +
+                              `Belongs to this many rooms: ${belongingRooms}`);
+
+                        this.server.rooms.removeFromAll(this);
+                        this.server.rooms.root.remove(this);
+                        this.state = ServerConnection.State.DISCONNECTED;
+                        this.emit(ServerConnection.Event.DISCONNECTED,
+                                  ServerConnection.ErrorCode.IDLE_TIMEOUT,
+                                  `Stayed idle for ${this.idleTimeoutDuration}`);
+                    }
+                }
+            })
+
             this.autoPing_ = debounce(() => {
                 this
                     .ping()
                     .then(() => {
                         debug(`[${this.id}] Auto-ping successful`);
+                        this.idleTimeout.delay();
 
                         if (server.options.pingInterval > 0 && this.state == ServerConnection.State.CONNECTED) {
                             this.autoPing_();
@@ -101,6 +129,8 @@ class ServerConnection extends EventEmitterExtra {
             ));
             return;
         }
+
+        this.idleTimeout.delay();
 
         /**
          * Route the incoming message
@@ -715,7 +745,11 @@ ServerConnection.ErrorCode = {
     /**
      * This error can be seen in rejection of `serverConnection.ping()` method.
      */
-    PING_ERROR: 'scPingError'
+    PING_ERROR: 'scPingError',
+    /**
+     * This error is thrown when a connection won't ping-pong for too long.
+     */
+    IDLE_TIMEOUT: 'scIdleTimeout'
 };
 
 
