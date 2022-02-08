@@ -670,17 +670,6 @@ class ServerConnection extends EventEmitterExtra {
             setTimeout(() => {
                 this.socket.close(code || 1000, reason);
 
-                setTimeout(() => {
-                    const persistsInRoot = !!this.server.rooms.root.getConnectionById(this.id);
-                    const belongingRooms = this.getRooms().length;
-
-                    if (persistsInRoot || belongingRooms !== 0 || this.socket.readyState != 3) {
-                        debug(`[${this.id}] Could not dispose this connection somehow. ` +
-                                    `ReadyState = ${['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'][this.socket.readyState]} | ` +
-                                    `Persists in root room: ${persistsInRoot} | ` +
-                                    `Belongs to this many rooms: ${belongingRooms}`);
-                    }
-                }, 15 * 1000);
                 resolve();
             }, delay || 0);
         });
