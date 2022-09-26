@@ -377,6 +377,7 @@ class ServerConnection extends EventEmitterExtra {
         debug(`Emitting line's "close" event...`);
         this.state = ServerConnection.State.DISCONNECTED;
         this.emit(ServerConnection.Event.DISCONNECTED, code, reason);
+        this.idleTimeout.dispose();
     }
 
 
