@@ -7,10 +7,11 @@ const isObject = require('lodash/isObject');
 const debounce = require('lodash/debounce');
 const Deferred = require('../lib/deferred');
 const uuid = require('uuid');
-const debug = require('debug')('line:server:connection');
+const Debug = require('debug');
 const LineError = require('../lib/error');
 const CloseStatus = require('../lib/closestatus');
 
+let debug;
 
 /**
  * Server connection class. Constructor of this class is not publicly accessible.
@@ -27,7 +28,8 @@ class ServerConnection extends EventEmitterExtra {
         super();
 
         this.id = uuid.v4();
-        debug(`[${this.id}] Creating connection with id ${this.id} ...`);
+        debug = Debug(`line:server:connection:${this.id}`);
+        debug(`Creating connection with id ${this.id} ...`);
 
         this.socket = socket;
         this.server = server;
@@ -40,12 +42,41 @@ class ServerConnection extends EventEmitterExtra {
         this.socket.on('error', this.onError_.bind(this));
         this.socket.on('close', this.onClose_.bind(this));
 
+        this.idleTimeout = new Deferred();
+        this.idleTimeoutDuration = server.options.pingInterval * 100;
+
         if (server.options.pingInterval > 0) {
+            /**
+             * Handle the weird rare state of connection where despite a successful closure residuals still remain in rooms.
+             */
+            this.idleTimeout = new Deferred({timeout:  this.idleTimeoutDuration, rejectOnExpire: false,
+                onExpire: () => {
+                    const persistsInRoot = !!this.server.rooms.root.getConnectionById(this.id);
+                    const belongingRooms = this.getRooms().length;
+
+                    if (persistsInRoot || belongingRooms !== 0) {
+                        debug(`Could not dispose this connection somehow. ` +
+                              `ReadyState = ${['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'][this.socket.readyState]} | ` +
+                              `Persists in root room: ${persistsInRoot} | ` +
+                              `Belongs to this many rooms: ${belongingRooms}`);
+
+                        this.server.rooms.removeFromAll(this);
+                        this.server.rooms.root.remove(this);
+                        this.state = ServerConnection.State.DISCONNECTED;
+                        this.emit(ServerConnection.Event.DISCONNECTED,
+                                  ServerConnection.ErrorCode.IDLE_TIMEOUT,
+                                  `Stayed idle for ${this.idleTimeoutDuration}`);
+                    }
+                }
+            })
+
             this.autoPing_ = debounce(() => {
                 this
                     .ping()
                     .then(() => {
-                        debug(`[${this.id}] Auto-ping successful`);
+
+                        debug(`Auto-ping successful`);
+                        this.idleTimeout.delay();
 
                         if (server.options.pingInterval > 0 && this.state == ServerConnection.State.CONNECTED) {
                             this.autoPing_();
@@ -63,10 +94,10 @@ class ServerConnection extends EventEmitterExtra {
         if (server.options.handshakeTimeout > 0) {
             this.handshakeTimeout_ = setTimeout(() => {
                 if (this.state != ServerConnection.State.AWAITING_HANDSHAKE) {
-                    return debug(`[${this.id}] Handshake is not awaiting, ignoring handshake timeout...`);
+                    return debug(`Handshake is not awaiting, ignoring handshake timeout...`);
                 }
 
-                debug(`[${this.id}] Handshake timeout exceed, closing the connection...`);
+                debug(`Handshake timeout exceed, closing the connection...`);
                 this.close(CloseStatus.HANDSHAKE_FAILED.code, `Handshake not completed after ${server.options.handshakeTimeout} ms`);
             }, server.options.handshakeTimeout);
         }
@@ -83,7 +114,7 @@ class ServerConnection extends EventEmitterExtra {
      * @ignore
      */
     onMessage_(data, flags) {
-        debug(`[${this.id}] Native "message" event recieved: ${data}`);
+        debug(`Native "message" event recieved: ${data}`);
         let message;
 
         // A message is recieved, debounce our auto-ping handler if connected
@@ -102,6 +133,8 @@ class ServerConnection extends EventEmitterExtra {
             return;
         }
 
+        this.idleTimeout.delay();
+
         /**
          * Route the incoming message
          */
@@ -118,7 +151,7 @@ class ServerConnection extends EventEmitterExtra {
                 this.onMessageWithResponse_(message);
             }
         } else {
-            debug(`[${this.id}] Could not route the message`, message);
+            debug(`Could not route the message`, message);
         }
     }
 
@@ -131,19 +164,19 @@ class ServerConnection extends EventEmitterExtra {
      */
     onHandshakeMessage_(message) {
         if (this.state == ServerConnection.State.CONNECTED) {
-            debug(`[${this.id}] Handshake message recieved but, handshake is already resolved, ignoring...`);
+            debug(`Handshake message recieved but, handshake is already resolved, ignoring...`);
             return this
                 .sendWithoutResponse_(message.createResponse(new Error('Handshake is already resolved')))
                 .catch(() => { /* Ignoring */ });
         }
 
-        debug(`[${this.id}] Handshake message recieved: ${message}`);
+        debug(`Handshake message recieved: ${message}`);
 
         /**
          * If handshake is resolved
          */
         message.once('resolved', (payload) => {
-            debug(`[${this.id}] Handshake is resolved, sending response...`);
+            debug(`Handshake is resolved, sending response...`);
             this.state = ServerConnection.State.CONNECTED;
             this.handshakeTimeout_ && clearTimeout(this.handshakeTimeout_);
             this.autoPing_(); // Start auto-pinging
@@ -156,32 +189,32 @@ class ServerConnection extends EventEmitterExtra {
             this
                 .sendWithoutResponse_(message.createResponse(null, responsePayload))
                 .then(() => {
-                    debug(`[${this.id}] Handshake resolving response is sent, emitting connection...`);
+                    debug(`Handshake resolving response is sent, emitting connection...`);
                     this.server.rooms.root.add(this);
                     this.server.emit('connection', this);
                 })
                 .catch((err) => {
-                    debug(`[${this.id}] Could not send handshake response`, err);
+                    debug(`Could not send handshake response`, err);
 
                     // TODO: Emit these errors from the server
                     if (err instanceof LineError) {
                         switch (err.code) {
                             case ServerConnection.ErrorCode.DISCONNECTED:
-                                debug(`[${this.id}] Connection is gone before handshake completed, ignoring...`);
+                                debug(`Connection is gone before handshake completed, ignoring...`);
                                 return;
 
                             case ServerConnection.ErrorCode.WEBSOCKET_ERROR:
                                 // TODO: Try again!
-                                debug(`[${this.id}] Native websocket error`, err.payload);
+                                debug(`Native websocket error`, err.payload);
                                 return this.close(CloseStatus.HANDSHAKE_FAILED.code, CloseStatus.HANDSHAKE_FAILED.reason);
 
                             default:
-                                debug(`[${this.id}] Unhandled line error`, err);
+                                debug(`Unhandled line error`, err);
                                 return this.close(CloseStatus.HANDSHAKE_FAILED.code, CloseStatus.HANDSHAKE_FAILED.reason);
                         }
                     }
 
-                    debug(`[${this.id}] Unknown error`, err);
+                    debug(`Unknown error`, err);
                     return this.close(CloseStatus.HANDSHAKE_FAILED.code, CloseStatus.HANDSHAKE_FAILED.reason);
                 })
                 .then(() => {
@@ -193,11 +226,11 @@ class ServerConnection extends EventEmitterExtra {
          * Id handshake is rejected
          */
         message.once('rejected', (err) => {
-            debug(`[${this.id}] Handshake is rejected, sending response...`);
+            debug(`Handshake is rejected, sending response...`);
 
             this
                 .sendWithoutResponse_(message.createResponse(err))
-                .catch(err => debug(`[${this.id}] Handshake rejecting response could not sent, manually calling "close"...`, err))
+                .catch(err => debug(`Handshake rejecting response could not sent, manually calling "close"...`, err))
                 .then(() => this.close(CloseStatus.HANDSHAKE_REJECTED.code, CloseStatus.HANDSHAKE_REJECTED.reason, 50))
                 .then(() => {
                     message.dispose();
@@ -207,11 +240,11 @@ class ServerConnection extends EventEmitterExtra {
         /**
          * Emit handshake event from the server
          */
-        debug(`[${this.id}] Emitting server's "handshake" event...`);
+        debug(`Emitting server's "handshake" event...`);
         const handshakeListener = this.server.emit('handshake', this, message);
 
         if (!handshakeListener) {
-            debug(`[${this.id}] There is no handshake listener, resolving the handshake by default...`);
+            debug(`There is no handshake listener, resolving the handshake by default...`);
             message.resolve();
         }
     }
@@ -224,11 +257,11 @@ class ServerConnection extends EventEmitterExtra {
      * @ignore
      */
     onPingMessage_(message) {
-        debug(`[${this.id}] Ping received, responding with "pong"...`);
+        debug(`Ping received, responding with "pong"...`);
 
         this
             .sendWithoutResponse_(message.createResponse(null, 'pong'))
-            .catch(err => debug(`[${this.id}] Ping response failed to send back, ignoring for now...`, err));
+            .catch(err => debug(`Ping response failed to send back, ignoring for now...`, err));
     }
 
 
@@ -243,7 +276,7 @@ class ServerConnection extends EventEmitterExtra {
         if (!deferred) return;
 
         if (message.err) {
-            debug(`[${this.id}] Response (rejecting) recieved: ${message}`);
+            debug(`Response (rejecting) recieved: ${message}`);
             const err = new LineError(
                 ServerConnection.ErrorCode.MESSAGE_REJECTED,
                 'Message is rejected by server, check payload.',
@@ -251,7 +284,7 @@ class ServerConnection extends EventEmitterExtra {
             );
             deferred.reject(err);
         } else {
-            debug(`[${this.id}] Response (resolving) recieved: ${message}`);
+            debug(`Response (resolving) recieved: ${message}`);
             deferred.resolve(message.payload);
         }
 
@@ -266,7 +299,7 @@ class ServerConnection extends EventEmitterExtra {
      * @ignore
      */
     onMessageWithoutResponse_(message) {
-        debug(`[${this.id}] Message without response: name="${message.name}"`);
+        debug(`Message without response: name="${message.name}"`);
         this.emit(message.name, message);
     }
 
@@ -278,10 +311,10 @@ class ServerConnection extends EventEmitterExtra {
      * @ignore
      */
     onMessageWithResponse_(message) {
-        debug(`[${this.id}] Message with response: name="${message.name}" id="${message.id}"`);
+        debug(`Message with response: name="${message.name}" id="${message.id}"`);
 
         message.once('resolved', (payload) => {
-            debug(`[${this.id}] Message #${message.id} is resolved, sending response...`);
+            debug(`Message #${message.id} is resolved, sending response...`);
             this
                 .sendWithoutResponse_(message.createResponse(null, payload))
                 .catch((err) => {
@@ -295,7 +328,7 @@ class ServerConnection extends EventEmitterExtra {
         });
 
         message.once('rejected', (err) => {
-            debug(`[${this.id}] Message #${message.id} is rejected, sending response...`);
+            debug(`Message #${message.id} is rejected, sending response...`);
             this
                 .sendWithoutResponse_(message.createResponse(err))
                 .catch((err) => {
@@ -319,7 +352,7 @@ class ServerConnection extends EventEmitterExtra {
      * @ignore
      */
     onError_(err) {
-        debug(`[${this.id}] Native "error" event recieved, emitting line's "error" event: ${err}`);
+        debug(`Native "error" event recieved, emitting line's "error" event: ${err}`);
         this.emit(ServerConnection.Event.ERROR, err);
     }
 
@@ -332,8 +365,8 @@ class ServerConnection extends EventEmitterExtra {
      * @ignore
      */
     onClose_(code, reason) {
-        debug(`[${this.id}] Native "close" event recieved with code ${code}: ${reason}`);
-        debug(`[${this.id}] Removing connection from all rooms, rejecting all waiting messages...`);
+        debug(`Native "close" event recieved with code ${code}: ${reason}`);
+        debug(`Removing connection from all rooms, rejecting all waiting messages...`);
 
         this.handshakeTimeout_ && clearTimeout(this.handshakeTimeout_);
         this.autoPing_.cancel();
@@ -341,9 +374,10 @@ class ServerConnection extends EventEmitterExtra {
         this.server.rooms.root.remove(this);
         this.rejectAllDeferreds_(new LineError(ServerConnection.ErrorCode.DISCONNECTED, 'Socket connection closed!'));
 
-        debug(`[${this.id}] Emitting line's "close" event...`);
+        debug(`Emitting line's "close" event...`);
         this.state = ServerConnection.State.DISCONNECTED;
         this.emit(ServerConnection.Event.DISCONNECTED, code, reason);
+        this.idleTimeout.dispose();
     }
 
 
@@ -386,6 +420,7 @@ class ServerConnection extends EventEmitterExtra {
         }
 
         this.id = newId;
+        debug = Debug(`line:server:connection:${this.id}`);
     }
 
 
@@ -585,7 +620,7 @@ class ServerConnection extends EventEmitterExtra {
         }
 
         return new Promise((resolve, reject) => {
-            debug(`[${this.id}] Sending message: ${message}`);
+            debug(`Sending message: ${message}`);
             const messageStr = message.toString();
 
             this.socket.send(messageStr, (err) => {
@@ -610,12 +645,12 @@ class ServerConnection extends EventEmitterExtra {
      * @memberOf ServerConnection
      */
     ping() {
-        debug(`[${this.id}] Pinging...`);
+        debug(`Pinging...`);
         return this
             .send_(new Message({name: Message.Name.PING}))
             .catch(err => {
                 // No matter what error is, start disconnection process
-                debug(`[${this.id}] Auto-ping failed, manually disconnecting...`, err);
+                debug(`Auto-ping failed, manually disconnecting...`, err);
                 this.close(CloseStatus.PING_FAILED.code, CloseStatus.PING_FAILED.reason);
                 throw new LineError(
                     ServerConnection.ErrorCode.PING_ERROR,
@@ -635,23 +670,10 @@ class ServerConnection extends EventEmitterExtra {
      * @returns {Promise}
      */
     close(code, reason, delay) {
-        debug(`[${this.id}] Closing the connection in ${delay || 0} ms with code: ${code}.`);
+        debug(`Closing the connection in ${delay || 0} ms with code: ${code}.`);
         return new Promise((resolve) => {
             setTimeout(() => {
                 this.socket.close(code || 1000, reason);
-
-                setTimeout(() => {
-                    const persistsInRoot = !!this.server.rooms.root.getConnectionById(this.id);
-                    const belongingRooms = this.getRooms().length;
-
-                    if (persistsInRoot || belongingRooms !== 0 || this.socket.readyState != 3) {
-                        debug(`[${this.id}] Could not dispose this connection somehow. ` +
-                                    `ReadyState = ${['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'][this.socket.readyState]} | ` +
-                                    `Persists in root room: ${persistsInRoot} | ` +
-                                    `Belongs to this many rooms: ${belongingRooms}`);
-                    }
-                }, 15 * 1000);
-                resolve();
             }, delay || 0);
         });
     }
@@ -715,7 +737,11 @@ ServerConnection.ErrorCode = {
     /**
      * This error can be seen in rejection of `serverConnection.ping()` method.
      */
-    PING_ERROR: 'scPingError'
+    PING_ERROR: 'scPingError',
+    /**
+     * This error is thrown when a connection won't ping-pong for too long.
+     */
+    IDLE_TIMEOUT: 'scIdleTimeout'
 };
 
 
