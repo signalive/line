@@ -5,13 +5,15 @@ class Deferred {
     constructor({
         handler = () => {},
         onExpire = () => {},
-        timeout = 0
+        timeout = 0,
+        rejectOnExpire = true
     } = {}) {
         this.resolve_ = null;
         this.reject_ = null;
 
         this.timeout_ = null;
         this.timeoutDuration_ = timeout;
+        this.rejectOnExpire_ = rejectOnExpire;
         this.onExpire_ = onExpire;
         this.isFinished_ = false;
 
@@ -54,7 +56,9 @@ class Deferred {
         this.isFinished_ = true;
         this.clearTimeout_();
         this.onExpire_();
-        this.reject_(new LineError(Deferred.ErrorCode.EXPIRED, `Timeout ${this.timeoutDuration_} ms exceed`));
+
+        if (this.rejectOnExpire_)
+            this.reject_(new LineError(Deferred.ErrorCode.EXPIRED, `Timeout ${this.timeoutDuration_} ms exceed`));
     }
 
 
@@ -63,6 +67,12 @@ class Deferred {
         this.clearTimeout_();
     }
 
+    delay(timeout) {
+        if (this.timeoutDuration_ > 0) {
+            this.clearTimeout_();
+            this.timeout_ = setTimeout(this.expire.bind(this), timeout || this.timeoutDuration_);
+        }
+    }
 
     then(...args) {
         return this.promise.then.apply(this.promise, args);
