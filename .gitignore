@@ -5,3 +5,4 @@ coverage
 /client-web.js
 /client-web.d.ts
 /server.js
+.idea/
