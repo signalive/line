@@ -7,6 +7,12 @@ line
 
 *line* is a lightweight and efficient (web)-socket library that bears non-blocking interface and scalable architecture.  *line* is **fast**, **reliable** and yet it supports **message responses**, **response timeouts** and **client rooms**. *line* internally monitors connection health, and it pro-actively strives to achieve a stable connection. We built *line* on top of the  javascript based [ws](https://github.com/websockets/ws).
 
+With ws 8.0.0 it is possible install bufferutil as a peer dependancy to improve performance. This is a native component, and optional. If you wish to use, install it via npm in your package
+
+```
+npm i -s bufferutil
+```
+
 *line* runs on Node.JS and all modern browsers through an identical API. Therefore, it is a good candidate for cross-platform applications.
 
 
