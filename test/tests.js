@@ -1,5 +1,7 @@
 'use strict';
 
+const http = require('http');
+
 describe('Line Tests', function() {
     this.timeout(10000);
 
@@ -412,6 +414,112 @@ describe('Line Tests', function() {
             .then(_ => {
                 connectionCloseSpy.should.have.been.calledOnce;
             });
+    });
+});
+
+
+describe('Client.fetchResponseUrl', function() {
+
+    let httpServer;
+    let handler;
+    let requestCount;
+    let url;
+
+
+    beforeEach(function() {
+        requestCount = 0;
+        handler = (req, res) => res.end();
+
+        httpServer = http.createServer((req, res) => {
+            requestCount++;
+            handler(req, res);
+        });
+
+        return new Promise(resolve => {
+            httpServer.listen(0, '127.0.0.1', _ => {
+                url = `http://127.0.0.1:${httpServer.address().port}/`;
+                resolve();
+            });
+        });
+    });
+
+
+    afterEach(function() {
+        return new Promise(resolve => httpServer.close(resolve));
+    });
+
+
+    it('should resolve with the location header of a 301/302 response', function() {
+        let method;
+
+        handler = (req, res) => {
+            method = req.method;
+            res.writeHead(301, {location: 'http://localhost:9999/redirected'});
+            res.end();
+        };
+
+        return Client
+            .fetchResponseUrl(url)
+            .then(location => {
+                location.should.equal('http://localhost:9999/redirected');
+                method.should.equal('HEAD');
+                requestCount.should.equal(1);
+
+                handler = (req, res) => {
+                    res.writeHead(302, {location: 'http://localhost:9999/redirected'});
+                    res.end();
+                };
+                return Client.fetchResponseUrl(url);
+            })
+            .then(location => location.should.equal('http://localhost:9999/redirected'));
+    });
+
+
+    it('should use the https transport for https urls', function() {
+        return Client
+            .fetchResponseUrl(url.replace('http://', 'https://'))
+            .should.be.rejectedWith(Error)
+            .then(err => err.code.should.not.equal('ERR_INVALID_PROTOCOL'));
+    });
+
+
+    it('should reject if the response is not a redirection or has no location header', function() {
+        handler = (req, res) => {
+            res.writeHead(200);
+            res.end();
+        };
+
+        return Client
+            .fetchResponseUrl(url)
+            .should.be.rejectedWith(Error)
+            .then(err => {
+                err.message.should.equal('Not redirected, status code: "200"');
+
+                handler = (req, res) => {
+                    res.writeHead(301);
+                    res.end();
+                };
+                return Client.fetchResponseUrl(url).should.be.rejectedWith(Error);
+            })
+            .then(err => err.message.should.equal('Redirected, but no location header'));
+    });
+
+
+    it('should reject if timeout exceed', function() {
+        handler = _ => {};
+
+        return Client
+            .fetchResponseUrl(url, 100)
+            .should.be.rejectedWith(Error)
+            .then(err => err.code.should.equal('dExpired'));
+    });
+
+
+    it('should reject if the connection fails', function() {
+        const closedUrl = url;
+
+        return new Promise(resolve => httpServer.close(resolve))
+            .then(_ => Client.fetchResponseUrl(closedUrl).should.be.rejectedWith(Error));
     });
 });
 
