@@ -1,5 +1,5 @@
 const _ = require('lodash');
-const vorpal = require('vorpal')();
+const readline = require('readline');
 const Server = require('../dist/server');
 const Client = require('../dist/client-node');
 
@@ -25,7 +25,7 @@ class StressTestClient {
             .connectAsync()
             .then(_ => this.sendTestMessage())
             .catch(err => {
-                vorpal.log('Client could not connect', err);
+                console.log('Client could not connect', err);
             });
     }
 
@@ -33,7 +33,7 @@ class StressTestClient {
         this.client
             .send('test', getRandomString(global.requestLength))
             .catch(err => {
-                vorpal.log('Could not get response for test');
+                console.log('Could not get response for test');
             });
 
         this.timeout = setTimeout(this.sendTestMessage.bind(this), global.heartbeatInterval);
@@ -45,7 +45,7 @@ class StressTestClient {
         this.client
             .disconnectAsync()
             .catch(err => {
-                vorpal.log('Could not disconnect', err);
+                console.log('Could not disconnect', err);
             });
     }
 }
@@ -53,9 +53,9 @@ class StressTestClient {
 
 server
     .start()
-    .then(() => vorpal.log('Server started'))
+    .then(() => console.log('Server started'))
     .catch(err => {
-        vorpal.log('Server could not started', err);
+        console.log('Server could not started', err);
         process.exit(1);
     });
 
@@ -68,7 +68,7 @@ server.on('connection', connection => {
 
 
 setInterval(() => {
-    vorpal.log(`Server connections: ${_.size(server.rooms.root.connections)}, Clients: ${clients.length}`);
+    console.log(`Server connections: ${_.size(server.rooms.root.connections)}, Clients: ${clients.length}`);
 }, 2500);
 
 
@@ -99,88 +99,37 @@ function getRandomString(len) {
 setInterval(() => {
     if (global.desiredClient > clients.length) {
         const diff = global.desiredClient - clients.length;
-        _.times(Math.min(global.desiredClient, global.batchLimit), _ => createClient());
+        _.times(Math.min(diff, global.batchLimit), _ => createClient());
     } else if (global.desiredClient < clients.length) {
         const diff = clients.length - global.desiredClient;
         _.times(Math.min(diff, global.batchLimit), _ => removeClient());
-    } else {
-        // vorpal.log('OK');
     }
 }, global.checkInterval);
 
 
-vorpal
-    .command('get client-count')
-    .description('Gets desired client number.')
-    .action(function(args, done) {
-        vorpal.log(global.desiredClient);
-        done();
-    });
+const commands = {
+    'client-count': 'desiredClient',
+    'heartbeat-interval': 'heartbeatInterval',
+    'req-length': 'requestLength',
+    'res-length': 'responseLength'
+};
 
+const rl = readline.createInterface({input: process.stdin, output: process.stdout, prompt: '> '});
 
-vorpal
-    .command('set client-count <count>')
-    .description('Sets desired client number.')
-    .action(function(args, done) {
-        global.desiredClient = parseInt(args.count, 10);
-        done();
-    });
+rl.on('line', line => {
+    const [action, name, value] = line.trim().split(/\s+/);
+    const property = commands[name];
+    const parsedValue = parseInt(value, 10);
 
+    if (action == 'get' && property) {
+        console.log(global[property]);
+    } else if (action == 'set' && property && !isNaN(parsedValue)) {
+        global[property] = parsedValue;
+    } else if (line.trim() != '') {
+        console.log(`Usage: get|set ${Object.keys(commands).join('|')} [value]`);
+    }
 
-vorpal
-    .command('get heartbeat-interval')
-    .description('Gets heartbeat message interval.')
-    .action(function(args, done) {
-        vorpal.log(global.heartbeatInterval);
-        done();
-    });
+    rl.prompt();
+});
 
-
-vorpal
-    .command('set heartbeat-interval <interval>')
-    .description('Sets heartbeat message interval.')
-    .action(function(args, done) {
-        global.heartbeatInterval = parseInt(args.interval, 10);
-        done();
-    });
-
-
-vorpal
-    .command('get req-length')
-    .description('Gets heartbeat message payload length.')
-    .action(function(args, done) {
-        vorpal.log(global.requestLength);
-        done();
-    });
-
-
-vorpal
-    .command('set req-length <length>')
-    .description('Sets heartbeat message payload length.')
-    .action(function(args, done) {
-        global.requestLength = parseInt(args.length, 10);
-        done();
-    });
-
-
-vorpal
-    .command('get res-length')
-    .description('Gets heartbeat response payload length.')
-    .action(function(args, done) {
-        vorpal.log(global.responseLength);
-        done();
-    });
-
-
-vorpal
-    .command('set res-length <length>')
-    .description('Sets heartbeat response payload length.')
-    .action(function(args, done) {
-        global.responseLength = parseInt(args.length, 10);
-        done();
-    });
-
-
-vorpal
-    .delimiter('>')
-    .show();
+rl.prompt();

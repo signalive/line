@@ -1,3 +1,8 @@
+const nodeTest = require('node:test');
+global.describe = nodeTest.describe;
+global.it = nodeTest.it;
+global.beforeEach = nodeTest.beforeEach;
+global.afterEach = nodeTest.afterEach;
 global.chai = require('chai');
 global.chaiAsPromised = require('chai-as-promised');
 global.sinon = require('sinon');

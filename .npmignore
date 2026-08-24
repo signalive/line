@@ -1,10 +1,11 @@
+coverage
 demo
 docs
 docs_src
 node_modules
 test
-.babelrc
+babel.config.json
 .gitignore
+.idea
 .jsdoc.json
-.travis.yml
 webpack.config.js
