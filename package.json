@@ -3,13 +3,13 @@
   "version": "2.0.0",
   "main": "dist/index.js",
   "scripts": {
-    "build": "webpack -p",
-    "build:dev": "webpack",
+    "build": "webpack --mode production",
+    "build:dev": "webpack --mode development",
     "build:docs": "jsdoc ./src/**/* -c .jsdoc.json",
-    "build:watch": "webpack -p -w",
-    "coverage": "istanbul cover ./node_modules/.bin/_mocha -- test/runner-coverage.js -R spec",
+    "build:watch": "webpack --mode production --watch",
+    "coverage": "c8 node --test test/runner-coverage.js",
     "postinstall": "node ./scripts/symlink.js",
-    "test": "mocha test/runner.js"
+    "test": "node --test test/runner.js"
   },
   "keywords": [
     "websocket",

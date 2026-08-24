@@ -3,7 +3,6 @@
 const http = require('http');
 
 describe('Line Tests', function() {
-    this.timeout(10000);
 
     let server;
     let connections;
@@ -64,7 +63,11 @@ describe('Line Tests', function() {
                 client1OpenSpy.should.have.been.calledOnce;
                 client2OpenSpy.should.have.been.calledOnce;
                 serverConnectionSpy.should.have.been.calledTwice;
-            });
+            })
+            .then(_ => Promise.all([
+                client1.disconnectAsync(),
+                client2.disconnectAsync()
+            ]));
     });
 
 
@@ -294,7 +297,7 @@ describe('Line Tests', function() {
         const clients = [
             new Client('ws://localhost:3001', {handshake: {payload: {id: 1}}}),
             new Client('ws://localhost:3001', {handshake: {payload: {id: 2}}}),
-            new Client('ws://localhost:3001', {handshake: {payload: {id: 3}}})
+            new Client('ws://localhost:3001', {handshake: {payload: {id: 3}}, reconnect: false})
         ];
 
         server.on('handshake', (connection, handshake) => {
@@ -385,6 +388,9 @@ describe('Line Tests', function() {
             })
             .then(_ => {
                 clientCloseSpy.should.have.been.calledOnce;
+
+                client.options.reconnect = false;
+                client.resetReconnectState_();
             });
     });
 
@@ -413,6 +419,9 @@ describe('Line Tests', function() {
             })
             .then(_ => {
                 connectionCloseSpy.should.have.been.calledOnce;
+
+                client.options.reconnect = false;
+                client.resetReconnectState_();
             });
     });
 });
