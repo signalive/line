@@ -12,6 +12,8 @@ const Debug = require('debug');
 const LineError = require('../lib/error');
 const CloseStatus = require('../lib/closestatus');
 
+const hasOwnProperty = Object.prototype.hasOwnProperty;
+
 let debug;
 
 /**
@@ -138,6 +140,15 @@ class ServerConnection extends EventEmitterExtra {
             this.emit(ServerConnection.Event.ERROR, new LineError(
                 ServerConnection.ErrorCode.INVALID_MESSAGE,
                 'Invalid message: "name" must be a non-empty string. Check payload for incoming data.',
+                data
+            ));
+            return;
+        }
+
+        if (hasOwnProperty.call(Object.prototype, message.name)) {
+            this.emit(ServerConnection.Event.ERROR, new LineError(
+                ServerConnection.ErrorCode.INVALID_MESSAGE,
+                'Invalid message: "name" must not be an Object.prototype property. Check payload for incoming data.',
                 data
             ));
             return;
@@ -728,8 +739,10 @@ ServerConnection.ErrorCode = {
     INVALID_JSON: 'scInvalidJson',
     /**
      * Indicates a well-formed-JSON frame that is not a valid line message,
-     * e.g. its "name" (n) is missing or is not a non-empty string. The frame
-     * is dropped and this error is emitted in `ServerConnection.Event.ERROR`.
+     * e.g. its "name" (n) is missing, is not a non-empty string, or is an
+     * `Object.prototype` property such as `constructor` or `__proto__`. The
+     * frame is dropped and this error is emitted in
+     * `ServerConnection.Event.ERROR`.
      */
     INVALID_MESSAGE: 'scInvalidMessage',
     /**
