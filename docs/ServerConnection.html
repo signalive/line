@@ -65,7 +65,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="server_connection.js.html">server/connection.js</a>, <a href="server_connection.js.html#line16">line 16</a>
+        <a href="server_connection.js.html">server/connection.js</a>, <a href="server_connection.js.html#line19">line 19</a>
     </li></ul></dd>
     
 
@@ -226,7 +226,7 @@ of <code>ServerConnection</code> will be emitted.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="server_connection.js.html">server/connection.js</a>, <a href="server_connection.js.html#line700">line 700</a>
+        <a href="server_connection.js.html">server/connection.js</a>, <a href="server_connection.js.html#line721">line 721</a>
     </li></ul></dd>
     
 
@@ -377,6 +377,33 @@ will be emitted in <code>ServerConnection.Event.ERROR</code> event.</p></td>
             
 
             <td class="description last"><p>Indicates an error while json parsing/stringify.</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>INVALID_MESSAGE</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Indicates a well-formed-JSON frame that is not a valid line message,
+e.g. its &quot;name&quot; (n) is missing, is not a non-empty string, or is an
+<code>Object.prototype</code> property such as <code>constructor</code> or <code>__proto__</code>. The
+frame is dropped and this error is emitted in
+<code>ServerConnection.Event.ERROR</code>.</p></td>
         </tr>
 
     
@@ -558,7 +585,7 @@ already connection with that id, this error will be thrown.</p></td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="server_connection.js.html">server/connection.js</a>, <a href="server_connection.js.html#line774">line 774</a>
+        <a href="server_connection.js.html">server/connection.js</a>, <a href="server_connection.js.html#line803">line 803</a>
     </li></ul></dd>
     
 
@@ -702,7 +729,7 @@ already connection with that id, this error will be thrown.</p></td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="server_connection.js.html">server/connection.js</a>, <a href="server_connection.js.html#line753">line 753</a>
+        <a href="server_connection.js.html">server/connection.js</a>, <a href="server_connection.js.html#line782">line 782</a>
     </li></ul></dd>
     
 
@@ -869,7 +896,7 @@ already connection with that id, this error will be thrown.</p></td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="server_connection.js.html">server/connection.js</a>, <a href="server_connection.js.html#line52">line 52</a>
+        <a href="server_connection.js.html">server/connection.js</a>, <a href="server_connection.js.html#line55">line 55</a>
     </li></ul></dd>
     
 
@@ -942,7 +969,7 @@ already connection with that id, this error will be thrown.</p></td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="server_connection.js.html">server/connection.js</a>, <a href="server_connection.js.html#line672">line 672</a>
+        <a href="server_connection.js.html">server/connection.js</a>, <a href="server_connection.js.html#line693">line 693</a>
     </li></ul></dd>
     
 
@@ -1171,7 +1198,7 @@ already connection with that id, this error will be thrown.</p></td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="server_connection.js.html">server/connection.js</a>, <a href="server_connection.js.html#line456">line 456</a>
+        <a href="server_connection.js.html">server/connection.js</a>, <a href="server_connection.js.html#line477">line 477</a>
     </li></ul></dd>
     
 
@@ -1273,7 +1300,7 @@ already connection with that id, this error will be thrown.</p></td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="server_connection.js.html">server/connection.js</a>, <a href="server_connection.js.html#line433">line 433</a>
+        <a href="server_connection.js.html">server/connection.js</a>, <a href="server_connection.js.html#line454">line 454</a>
     </li></ul></dd>
     
 
@@ -1406,7 +1433,7 @@ already connection with that id, this error will be thrown.</p></td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="server_connection.js.html">server/connection.js</a>, <a href="server_connection.js.html#line444">line 444</a>
+        <a href="server_connection.js.html">server/connection.js</a>, <a href="server_connection.js.html#line465">line 465</a>
     </li></ul></dd>
     
 
@@ -1539,7 +1566,7 @@ already connection with that id, this error will be thrown.</p></td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="server_connection.js.html">server/connection.js</a>, <a href="server_connection.js.html#line647">line 647</a>
+        <a href="server_connection.js.html">server/connection.js</a>, <a href="server_connection.js.html#line668">line 668</a>
     </li></ul></dd>
     
 
@@ -1641,7 +1668,7 @@ already connection with that id, this error will be thrown.</p></td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="server_connection.js.html">server/connection.js</a>, <a href="server_connection.js.html#line492">line 492</a>
+        <a href="server_connection.js.html">server/connection.js</a>, <a href="server_connection.js.html#line513">line 513</a>
     </li></ul></dd>
     
 
@@ -1893,7 +1920,7 @@ which resolves the payload parameter will be passed into <code>message.resolve(.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="server_connection.js.html">server/connection.js</a>, <a href="server_connection.js.html#line536">line 536</a>
+        <a href="server_connection.js.html">server/connection.js</a>, <a href="server_connection.js.html#line557">line 557</a>
     </li></ul></dd>
     
 
@@ -2106,7 +2133,7 @@ that resolves with nothing if the message is successfully sent.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="server_connection.js.html">server/connection.js</a>, <a href="server_connection.js.html#line407">line 407</a>
+        <a href="server_connection.js.html">server/connection.js</a>, <a href="server_connection.js.html#line428">line 428</a>
     </li></ul></dd>
     
 
@@ -2261,7 +2288,7 @@ handshake is already resolved or there is conflict, this method will throw error
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.6.11</a> on Mon Aug 24 2026 15:00:50 GMT+0300 (GMT+03:00) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.6.11</a> on Sun Sep 06 2026 23:04:27 GMT+0300 (Türkiye Standard Time) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
 </footer>
 
 <script>prettyPrint();</script>
