@@ -538,3 +538,102 @@ function wait(timeout) {
         setTimeout(resolve, timeout);
     });
 }
+
+
+describe('Malformed frame handling (regression)', {timeout: 6000}, function() {
+    const WebSocket = require('ws');
+    const INVALID_FRAMES = [
+        '{}',
+        '{"n":123}',
+        '{"n":null,"i":"x"}',
+        '{"n":{"a":1}}',
+        '{"n":[1,2]}',
+        '{"n":""}',
+        '{"n":"constructor"}',
+        '{"n":"__proto__"}',
+        '{"n":"toString","i":"x"}'
+    ];
+    let server;
+
+    function deadline(ms, message) {
+        let timer;
+        const promise = new Promise((resolve, reject) => {
+            timer = setTimeout(() => reject(new Error(message)), ms);
+        });
+        return {promise, clear: () => clearTimeout(timer)};
+    }
+
+    function race(ms, message, executor) {
+        const bound = deadline(ms, message);
+        return Promise
+            .race([new Promise(executor), bound.promise])
+            .then(
+                (value) => { bound.clear(); return value; },
+                (err) => { bound.clear(); return Promise.reject(err); }
+            );
+    }
+
+    beforeEach(function() {
+        server = new Server({port: 3002});
+        return server.start();
+    });
+
+    afterEach(function() {
+        return server.stop().then(_ => { server = null; });
+    });
+
+    it('should survive malformed pre-handshake frames and keep serving', function() {
+        return race(2000, 'server did not accept the raw connection', (resolve, reject) => {
+                const raw = new WebSocket('ws://localhost:3002');
+                raw.on('error', reject);
+                raw.on('open', () => {
+                    INVALID_FRAMES.forEach(frame => raw.send(frame));
+                    raw.close();
+                    resolve();
+                });
+            })
+            .then(_ => wait(20))
+            .then(_ => race(2000, 'server did not respond to handshake', (resolve, reject) => {
+                const c = new WebSocket('ws://localhost:3002');
+                c.on('error', reject);
+                c.on('message', () => { c.close(); resolve(); });
+                c.on('open', () => c.send(JSON.stringify({n: '_h', i: 'h1'})));
+            }));
+    });
+
+    it('should emit a connection error (not throw) for a malformed frame on a live connection', function() {
+        let raw;
+        return race(2000, 'no invalid message error emitted', (resolve, reject) => {
+                server.once('connection', (connection) => {
+                    connection.once('_error', resolve);
+                    raw.send('{"n":123}');
+                });
+                raw = new WebSocket('ws://localhost:3002');
+                raw.on('error', reject);
+                raw.on('open', () => raw.send(JSON.stringify({n: '_h', i: 'h2'})));
+            })
+            .then(err => {
+                err.code.should.equal(Server.Connection.ErrorCode.INVALID_MESSAGE);
+                String(err.payload).should.equal('{"n":123}');
+                raw.close();
+            });
+    });
+
+    it('should emit a connection error (not throw) for an Object.prototype event name', function() {
+        let raw;
+        return race(2000, 'no invalid message error emitted', (resolve, reject) => {
+                server.once('connection', (connection) => {
+                    connection.once('_error', resolve);
+                    raw.send('{"n":"constructor"}');
+                });
+                raw = new WebSocket('ws://localhost:3002');
+                raw.on('error', reject);
+                raw.on('open', () => raw.send(JSON.stringify({n: '_h', i: 'h3'})));
+            })
+            .then(err => {
+                err.code.should.equal(Server.Connection.ErrorCode.INVALID_MESSAGE);
+                String(err.payload).should.equal('{"n":"constructor"}');
+                raw.close();
+            });
+    });
+});

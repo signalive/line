@@ -4,12 +4,15 @@ const assign = require('lodash/assign');
 const forEach = require('lodash/forEach');
 const isInteger = require('lodash/isInteger');
 const isObject = require('lodash/isObject');
+const isString = require('lodash/isString');
 const debounce = require('lodash/debounce');
 const Deferred = require('../lib/deferred');
 const uuid = require('uuid');
 const Debug = require('debug');
 const LineError = require('../lib/error');
 const CloseStatus = require('../lib/closestatus');
+
+const hasOwnProperty = Object.prototype.hasOwnProperty;
 
 let debug;
 
@@ -128,6 +131,24 @@ class ServerConnection extends EventEmitterExtra {
             this.emit(ServerConnection.Event.ERROR, new LineError(
                 ServerConnection.ErrorCode.INVALID_JSON,
                 'Could not parse message, invalid json. Check payload for incoming data.',
+                data
+            ));
+            return;
+        }
+
+        if (!isString(message.name) || !message.name) {
+            this.emit(ServerConnection.Event.ERROR, new LineError(
+                ServerConnection.ErrorCode.INVALID_MESSAGE,
+                'Invalid message: "name" must be a non-empty string. Check payload for incoming data.',
+                data
+            ));
+            return;
+        }
+
+        if (hasOwnProperty.call(Object.prototype, message.name)) {
+            this.emit(ServerConnection.Event.ERROR, new LineError(
+                ServerConnection.ErrorCode.INVALID_MESSAGE,
+                'Invalid message: "name" must not be an Object.prototype property. Check payload for incoming data.',
                 data
             ));
             return;
@@ -716,6 +737,14 @@ ServerConnection.ErrorCode = {
      * Indicates an error while json parsing/stringify.
      */
     INVALID_JSON: 'scInvalidJson',
+    /**
+     * Indicates a well-formed-JSON frame that is not a valid line message,
+     * e.g. its "name" (n) is missing, is not a non-empty string, or is an
+     * `Object.prototype` property such as `constructor` or `__proto__`. The
+     * frame is dropped and this error is emitted in
+     * `ServerConnection.Event.ERROR`.
+     */
+    INVALID_MESSAGE: 'scInvalidMessage',
     /**
      * This error can be thrown in `serverConnection.setId()`. Connection id
      * cannot be set after handshake.
